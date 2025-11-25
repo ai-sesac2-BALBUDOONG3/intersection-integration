@@ -4,30 +4,39 @@ class User {
   final int birthYear;
   final String region;
   final String school;
-  final String? profileImageUrl;
 
-  const User({
+  String? profileImageUrl;        // 프로필 사진 (변경 가능)
+  String? backgroundImageUrl;     // 배경사진 (변경 가능)
+  List<String> feedImages;        // 인스타 피드 이미지 리스트
+
+  User({
     required this.id,
     required this.name,
     required this.birthYear,
     required this.region,
     required this.school,
     this.profileImageUrl,
-  });
+    this.backgroundImageUrl,
+    List<String>? feedImages,
+  }) : feedImages = feedImages ?? [];
 
-  /// JSON → User 변환
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json["id"],                                      // int
+      id: json["id"],
       name: json["name"],
       birthYear: json["birth_year"] ?? json["birthYear"] ?? 0,
       region: json["region"],
       school: json["school_name"] ?? json["school"] ?? "",
+
       profileImageUrl: json["profile_image"],
+      backgroundImageUrl: json["background_image"],
+
+      feedImages: (json["feed_images"] != null)
+          ? List<String>.from(json["feed_images"])
+          : [],
     );
   }
 
-  /// User → JSON 변환 (필요하면 사용)
   Map<String, dynamic> toJson() {
     return {
       "id": id,
@@ -35,7 +44,10 @@ class User {
       "birth_year": birthYear,
       "region": region,
       "school_name": school,
+
       "profile_image": profileImageUrl,
+      "background_image": backgroundImageUrl,
+      "feed_images": feedImages,
     };
   }
 }

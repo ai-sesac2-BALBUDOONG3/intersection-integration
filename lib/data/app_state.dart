@@ -53,4 +53,7 @@ class AppState {
     // 🔥 SharedPreferences 초기화 → 자동로그인 제거
     await UserStorage.clear();
   }
+  /// 내가 참여해본 채팅방 목록 (friendId 기반)
+  static List<int> chatList = [];
+
 }
