@@ -33,6 +33,9 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Ignore build reports (local CI/IDE reports)
+/android/build/reports/
+
 # Symbolication related
 app.*.symbols
 
