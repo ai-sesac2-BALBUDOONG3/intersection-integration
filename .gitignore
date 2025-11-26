@@ -27,3 +27,6 @@ yarn-error.log*
 *.temp
 .cache/
 
+# repository-level venv (should not be tracked)
+.venv/
+
