@@ -97,6 +97,7 @@ class ChatMessageRead(BaseModel):
     room_id: int
     sender_id: int
     content: str
+    message_type: str = "normal"  # normal, system
     is_read: bool
     created_at: str
 
