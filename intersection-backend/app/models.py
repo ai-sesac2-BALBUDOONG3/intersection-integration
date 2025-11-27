@@ -1,7 +1,28 @@
-from typing import Optional
+from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
 
+# ------------------------------------------------------
+# 1. Community (커뮤니티) 모델 추가
+# ------------------------------------------------------
+class Community(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str  # 커뮤니티 이름 (예: "서울신동초등학교 2010년 입학")
+    
+    # 교집합 조건들
+    school_name: str
+    admission_year: int
+    region: str
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # 이 커뮤니티에 속한 유저들 (User 모델과 연결)
+    users: List["User"] = Relationship(back_populates="community")
+
+
+# ------------------------------------------------------
+# 2. User (사용자) 모델 수정
+# ------------------------------------------------------
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     login_id: str = Field(index=True, unique=True)
@@ -10,14 +31,21 @@ class User(SQLModel, table=True):
     nickname: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    
     birth_year: Optional[int] = None
     gender: Optional[str] = None
-    region: Optional[str] = None
-    school_name: Optional[str] = None
+    region: Optional[str] = None        # 지역
+    school_name: Optional[str] = None   # 학교명
     school_type: Optional[str] = None
-    admission_year: Optional[int] = None
+    admission_year: Optional[int] = None # 입학년도
+
+    # 🔥 새로 추가된 부분: 커뮤니티 ID와 관계 설정
+    community_id: Optional[int] = Field(default=None, foreign_key="community.id")
+    community: Optional[Community] = Relationship(back_populates="users")
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+# (나머지 Post, Comment 등 기존 코드는 그대로 두시면 됩니다)
 class Post(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     author_id: int = Field(foreign_key="user.id")
@@ -31,7 +59,6 @@ class Comment(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id")
     content: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
-
 
 class UserFriendship(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

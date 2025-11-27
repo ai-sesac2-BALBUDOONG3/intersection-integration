@@ -8,6 +8,9 @@ from sqlmodel import Session, select
 from ..auth import get_password_hash, verify_password, create_access_token, decode_access_token
 from fastapi.security import OAuth2PasswordBearer
 
+# 💡 [추가됨] 방금 만든 커뮤니티 자동 배정 함수 가져오기
+from ..services import assign_community
+
 router = APIRouter(tags=["users"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
@@ -83,6 +86,12 @@ def create_user(data: UserCreate):
         session.commit()
         session.refresh(user)
 
+        # 💡 [추가됨] 회원가입 직후, 입력한 정보로 커뮤니티 자동 배정 시도
+        assign_community(session, user)
+        session.add(user)   # 변경된 community_id 저장
+        session.commit()
+        session.refresh(user)
+
         return UserRead(id=user.id, name=user.name, birth_year=user.birth_year, region=user.region, school_name=user.school_name)
 
 
@@ -132,6 +141,13 @@ def update_my_info(data: UserUpdate, token: str = Depends(oauth2_scheme)):
         if data.admission_year is not None:
             user.admission_year = data.admission_year
 
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        # 💡 [추가됨] 정보 수정 후, 커뮤니티 재배정 시도
+        # (학교나 지역을 바꿨을 수 있으므로 다시 체크)
+        assign_community(session, user)
         session.add(user)
         session.commit()
         session.refresh(user)
