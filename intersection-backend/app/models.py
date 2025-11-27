@@ -94,6 +94,7 @@ class ChatRoom(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user1_id: int = Field(foreign_key="user.id")  # 채팅방 생성자
     user2_id: int = Field(foreign_key="user.id")  # 채팅 상대방
+    left_user_id: Optional[int] = Field(default=None, foreign_key="user.id")  # 나간 사용자 (있으면 해당 사용자는 채팅방에서 제외)
     created_at: datetime = Field(default_factory=get_kst_now)
     updated_at: datetime = Field(default_factory=get_kst_now)  # 마지막 메시지 시간
 
@@ -104,6 +105,7 @@ class ChatMessage(SQLModel, table=True):
     room_id: int = Field(foreign_key="chatroom.id")
     sender_id: int = Field(foreign_key="user.id")
     content: str  # 메시지 내용
+    message_type: str = Field(default="normal")  # normal, system (시스템 메시지)
     is_read: bool = Field(default=False)  # 읽음 여부
     created_at: datetime = Field(default_factory=get_kst_now)
 

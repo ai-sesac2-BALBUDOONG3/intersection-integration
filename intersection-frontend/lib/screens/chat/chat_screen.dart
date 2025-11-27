@@ -496,6 +496,36 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessageBubble(ChatMessage message) {
+    // 시스템 메시지 처리
+    if (message.messageType == "system") {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  message.content,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final isMe = message.senderId == AppState.currentUser?.id;
     final time = _formatTime(message.createdAt);
 
@@ -801,9 +831,9 @@ class _ChatScreenState extends State<ChatScreen> {
           content: const Text(
             '채팅방을 나가시겠습니까?\n\n'
             '나가면:\n'
-            '• 모든 대화 내역이 삭제됩니다\n'
             '• 채팅방 목록에서 사라집니다\n'
-            '• 복구할 수 없습니다',
+            '• 상대방에게 나간 사실이 알려집니다\n'
+            '• 다시 들어올 수 없습니다',
             style: TextStyle(fontSize: 14, height: 1.5),
           ),
           actions: [

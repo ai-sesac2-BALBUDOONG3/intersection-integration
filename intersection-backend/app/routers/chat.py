@@ -121,9 +121,10 @@ def get_my_chat_rooms(current_user_id: int = Depends(get_current_user_id)):
     내가 참여한 모든 채팅방 목록을 반환합니다.
     """
     with Session(engine) as session:
-        # 내가 user1 또는 user2인 채팅방 조회
+        # 내가 user1 또는 user2인 채팅방 조회 (나간 채팅방 제외)
         statement = select(ChatRoom).where(
-            (ChatRoom.user1_id == current_user_id) | (ChatRoom.user2_id == current_user_id)
+            ((ChatRoom.user1_id == current_user_id) | (ChatRoom.user2_id == current_user_id)) &
+            (ChatRoom.left_user_id != current_user_id)  # 나간 채팅방 제외
         ).order_by(ChatRoom.updated_at.desc())
         
         rooms = session.exec(statement).all()
@@ -204,6 +205,7 @@ def get_chat_messages(
                 room_id=msg.room_id,
                 sender_id=msg.sender_id,
                 content=msg.content,
+                message_type=msg.message_type,
                 is_read=msg.is_read,
                 created_at=msg.created_at.isoformat()
             )
@@ -232,11 +234,16 @@ def send_chat_message(
         if room.user1_id != current_user_id and room.user2_id != current_user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
         
+        # 나간 채팅방인지 확인
+        if room.left_user_id == current_user_id:
+            raise HTTPException(status_code=403, detail="나간 채팅방에서는 메시지를 보낼 수 없습니다")
+        
         # 메시지 생성
         message = ChatMessage(
             room_id=room_id,
             sender_id=current_user_id,
-            content=data.content
+            content=data.content,
+            message_type="normal"
         )
         session.add(message)
         
@@ -251,17 +258,18 @@ def send_chat_message(
             room_id=message.room_id,
             sender_id=message.sender_id,
             content=message.content,
+            message_type=message.message_type,
             is_read=message.is_read,
             created_at=message.created_at.isoformat()
         )
 
 
 @router.delete("/rooms/{room_id}")
-def delete_chat_room(
+def leave_chat_room(
     room_id: int,
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """채팅방 나가기 (삭제)"""
+    """채팅방 나가기 (나간 사용자만 제외, 상대방에게 시스템 메시지 전송)"""
     with Session(engine) as session:
         room = session.get(ChatRoom, room_id)
         if not room:
@@ -271,17 +279,33 @@ def delete_chat_room(
         if current_user_id != room.user1_id and current_user_id != room.user2_id:
             raise HTTPException(status_code=403, detail="이 채팅방의 참여자가 아닙니다")
         
-        # 채팅방과 관련된 모든 메시지 삭제
-        messages_statement = select(ChatMessage).where(ChatMessage.room_id == room_id)
-        messages = session.exec(messages_statement).all()
-        for message in messages:
-            session.delete(message)
+        # 이미 나간 채팅방인지 확인
+        if room.left_user_id == current_user_id:
+            raise HTTPException(status_code=400, detail="이미 나간 채팅방입니다")
         
-        # 채팅방 삭제
-        session.delete(room)
+        # 상대방 ID 확인
+        other_user_id = room.user2_id if room.user1_id == current_user_id else room.user1_id
+        
+        # 나간 사용자로 표시
+        room.left_user_id = current_user_id
+        session.add(room)
+        
+        # 상대방에게 시스템 메시지 전송
+        system_message = ChatMessage(
+            room_id=room_id,
+            sender_id=current_user_id,  # 나간 사용자 ID
+            content="상대방이 채팅방을 나갔습니다.",
+            message_type="system",
+            is_read=False
+        )
+        session.add(system_message)
+        
+        # 채팅방 업데이트 시간 갱신
+        room.updated_at = get_kst_now()
+        
         session.commit()
         
-        return {"message": "채팅방이 삭제되었습니다"}
+        return {"message": "채팅방을 나갔습니다"}
 
 
 # ------------------------------------------------------

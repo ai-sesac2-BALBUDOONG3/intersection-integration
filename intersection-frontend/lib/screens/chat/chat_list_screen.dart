@@ -3,6 +3,7 @@ import '../../models/chat_room.dart';
 import '../../services/api_service.dart';
 import '../../data/app_state.dart';
 import 'chat_screen.dart';
+import 'dart:async';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -14,28 +15,47 @@ class ChatListScreen extends StatefulWidget {
 class _ChatListScreenState extends State<ChatListScreen> {
   List<ChatRoom> _chatRooms = [];
   bool _isLoading = true;
+  Timer? _pollingTimer;
 
   @override
   void initState() {
     super.initState();
     _loadChatRooms();
+    // 3초마다 채팅방 목록 업데이트 (실시간 업데이트)
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      _loadChatRooms(showLoading: false);
+    });
   }
 
-  Future<void> _loadChatRooms() async {
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadChatRooms({bool showLoading = true}) async {
     if (AppState.token == null) {
-      setState(() => _isLoading = false);
+      if (showLoading) {
+        setState(() => _isLoading = false);
+      }
       return;
     }
 
     try {
       final rooms = await ApiService.getMyChatRooms();
-      setState(() {
-        _chatRooms = rooms;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _chatRooms = rooms;
+          if (showLoading) {
+            _isLoading = false;
+          }
+        });
+      }
     } catch (e) {
       debugPrint("채팅방 목록 불러오기 오류: $e");
-      setState(() => _isLoading = false);
+      if (mounted && showLoading) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
