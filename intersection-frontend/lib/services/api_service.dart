@@ -65,21 +65,14 @@ class ApiService {
     final response = await http.get(url, headers: _headers(json: false));
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return User(
-        id: data["id"],
-        name: data["name"] ?? "",           // null이면 빈 문자열
-        birthYear: data["birth_year"] ?? 0, // null이면 0
-        region: data["region"] ?? "",       // null이면 빈 문자열
-        school: data["school_name"] ?? "",  // null이면 빈 문자열
-      );
+      return User.fromJson(jsonDecode(response.body));
     } else {
       throw Exception("내 정보 불러오기 실패: ${response.body}");
     }
   }
 
   // ----------------------------------------------------
-  // 7) Update my info (authenticated)
+  // 7) 내 정보 업데이트
   // ----------------------------------------------------
   static Future<Map<String, dynamic>> updateMyInfo(Map<String, dynamic> data) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/users/me');
@@ -94,7 +87,7 @@ class ApiService {
   }
 
   // ----------------------------------------------------
-  // Kakao dev login (dev-only helper)
+  // 🔥 [복구됨] Kakao dev login (개발용 로그인)
   // ----------------------------------------------------
   static Future<String> kakaoDevLogin() async {
     final url = Uri.parse("${ApiConfig.baseUrl}/auth/kakao/dev_token");
@@ -109,7 +102,7 @@ class ApiService {
   }
 
   // ----------------------------------------------------
-  // 4) 추천 친구 목록
+  // 4) 추천 친구 목록 (Null 에러 해결 버전)
   // ----------------------------------------------------
   static Future<List<User>> getRecommendedFriends() async {
     final url = Uri.parse("${ApiConfig.baseUrl}/users/me/recommended");
@@ -120,17 +113,9 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      final list = jsonDecode(response.body) as List;
-
-      return list.map((data) {
-        return User(
-          id: data["id"],
-          name: data["name"],
-          birthYear: data["birth_year"],
-          region: data["region"],
-          school: data["school_name"],
-        );
-      }).toList();
+      final List<dynamic> list = jsonDecode(response.body);
+      // User.fromJson을 사용하여 안전하게 변환
+      return list.map((json) => User.fromJson(json)).toList();
     } else {
       throw Exception("추천 친구 불러오기 실패: ${response.body}");
     }
@@ -148,6 +133,25 @@ class ApiService {
     );
 
     return response.statusCode == 200;
+  }
+
+  // ----------------------------------------------------
+  // 6) 친구 목록 가져오기
+  // ----------------------------------------------------
+  static Future<List<User>> getFriends() async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/friends/me");
+
+    final response = await http.get(
+      url,
+      headers: _headers(json: false),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> list = jsonDecode(response.body);
+      return list.map((json) => User.fromJson(json)).toList();
+    } else {
+      throw Exception("친구 목록 불러오기 실패: ${response.body}");
+    }
   }
 
   // ----------------------------------------------------
@@ -197,33 +201,5 @@ class ApiService {
     }
 
     throw Exception("댓글 목록 불러오기 실패: ${response.body}");
-  }
-
-  // ----------------------------------------------------
-  // 6) 친구 목록 가져오기
-  // ----------------------------------------------------
-  static Future<List<User>> getFriends() async {
-    final url = Uri.parse("${ApiConfig.baseUrl}/friends/me");
-
-    final response = await http.get(
-      url,
-      headers: _headers(json: false),
-    );
-
-    if (response.statusCode == 200) {
-      final list = jsonDecode(response.body) as List;
-
-      return list.map((data) {
-        return User(
-          id: data["id"],
-          name: data["name"],
-          birthYear: data["birth_year"],
-          region: data["region"],
-          school: data["school_name"],
-        );
-      }).toList();
-    } else {
-      throw Exception("친구 목록 불러오기 실패: ${response.body}");
-    }
   }
 }
