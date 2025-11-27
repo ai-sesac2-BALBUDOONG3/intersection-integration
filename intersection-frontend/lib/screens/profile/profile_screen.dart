@@ -9,7 +9,6 @@ import 'package:intersection/screens/common/image_viewer.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intersection/screens/auth/landing_screen.dart';
 
-
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -156,8 +155,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         backgroundColor: Colors.black,
                         child: hasProfileImage
                             ? null
-                            : const Icon(Icons.person,
-                                size: 60, color: Colors.white),
+                            : const Icon(
+                                Icons.person,
+                                size: 60,
+                                color: Colors.white,
+                              ),
                       ),
                     ),
                   ),
@@ -289,6 +291,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   const SizedBox(height: 20),
 
+                  // 🔥 로그아웃 버튼 (팝업 포함)
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -297,13 +300,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () async {
+                        final shouldLogout = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text("로그아웃"),
+                            content:
+                                const Text("로그아웃하시겠습니까?"),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(context, false),
+                                child: const Text("취소"),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(context, true),
+                                child: const Text(
+                                  "로그아웃",
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (shouldLogout != true) return;
+
                         await AppState.logout();
 
                         if (!mounted) return;
 
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (_) => const LandingScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const LandingScreen()),
                           (route) => false,
                         );
                       },
