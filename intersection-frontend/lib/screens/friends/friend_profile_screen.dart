@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:intersection/models/widget.user.dart';
+import 'package:intersection/models/user.dart';
 import 'package:intersection/screens/common/image_viewer.dart';
 import 'package:intersection/services/api_service.dart';
 
@@ -22,11 +22,11 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
 
-    final hasProfileImage = widget.widget.user.profileImageUrl != null;
+    final hasProfileImage = widget.user.profileImageUrl != null;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.widget.user.name),
+        title: Text(widget.user.name),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
