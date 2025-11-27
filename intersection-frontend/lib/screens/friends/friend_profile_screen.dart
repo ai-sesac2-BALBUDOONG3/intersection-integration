@@ -15,6 +15,8 @@ class FriendProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
 
+    final hasProfileImage = user.profileImageUrl != null;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(user.name),
@@ -74,27 +76,29 @@ class FriendProfileScreen extends StatelessWidget {
                   bottom: -50,
                   left: (width / 2) - 50,
                   child: GestureDetector(
-                    onTap: () {
-                      if (user.profileImageUrl != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                ImageViewer(imageUrl: user.profileImageUrl!),
-                          ),
-                        );
-                      }
-                    },
+                    onTap: hasProfileImage
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ImageViewer(
+                                  imageUrl: user.profileImageUrl!,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
                     child: Hero(
                       tag: "friend-profile-${user.id}",
                       child: CircleAvatar(
                         radius: 50,
-                        backgroundImage: user.profileImageUrl != null
-                            ? _imageProvider(user.profileImageUrl!)
-                            : null,
-                        child: user.profileImageUrl == null
-                            ? const Icon(Icons.person, size: 48)
-                            : null,
+                        backgroundImage:
+                            hasProfileImage ? _imageProvider(user.profileImageUrl!) : null,
+                        backgroundColor: Colors.black,
+                        child: hasProfileImage
+                            ? null
+                            : const Icon(Icons.person,
+                                size: 60, color: Colors.white),
                       ),
                     ),
                   ),
@@ -120,14 +124,14 @@ class FriendProfileScreen extends StatelessWidget {
             const SizedBox(height: 30),
 
             // ==========================
-            // 4) 친구 피드 (인스타 그리드)
+            // 4) 친구 피드
             // ==========================
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  "최근 활동",
+                  "피드",
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium!
@@ -138,40 +142,49 @@ class FriendProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: user.feedImages.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 4,
-                crossAxisSpacing: 4,
-              ),
-              itemBuilder: (context, index) {
-                final img = user.feedImages[index];
+            if (user.feedImages.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  "게시물 없음",
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              )
+            else
+              GridView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                itemCount: user.feedImages.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 4,
+                  crossAxisSpacing: 4,
+                ),
+                itemBuilder: (context, index) {
+                  final img = user.feedImages[index];
 
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ImageViewer(imageUrl: img),
-                      ),
-                    );
-                  },
-                  child: Hero(
-                    tag: img,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Image(
-                        image: _imageProvider(img),
-                        fit: BoxFit.cover,
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ImageViewer(imageUrl: img),
+                        ),
+                      );
+                    },
+                    child: Hero(
+                      tag: img,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image(
+                          image: _imageProvider(img),
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
 
             const SizedBox(height: 40),
 
@@ -191,7 +204,8 @@ class FriendProfileScreen extends StatelessWidget {
                   Text("지역: ${user.region}",
                       style: const TextStyle(fontSize: 16)),
                   const SizedBox(height: 10),
-                  Text("${user.birthYear}년생", style: const TextStyle(fontSize: 16)),
+                  Text("${user.birthYear}년생",
+                      style: const TextStyle(fontSize: 16)),
                   const SizedBox(height: 30),
                 ],
               ),
@@ -203,7 +217,7 @@ class FriendProfileScreen extends StatelessWidget {
   }
 
   // ==========================
-  // 로컬 이미지/네트워크 자동 구분 로더
+  // 이미지 자동 구분 로더
   // ==========================
   ImageProvider _imageProvider(String path) {
     if (path.startsWith("http")) {

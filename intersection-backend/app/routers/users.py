@@ -8,6 +8,9 @@ from sqlmodel import Session, select
 from ..auth import get_password_hash, verify_password, create_access_token, decode_access_token
 from fastapi.security import OAuth2PasswordBearer
 
+# 💡 [수정됨] 추천 함수 get_recommended_friends 추가
+from ..services import assign_community, get_recommended_friends
+
 router = APIRouter(tags=["users"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
@@ -40,7 +43,6 @@ class LoginRequest(BaseModel):
 @router.post("/token", response_model=Token, tags=["auth"])
 def login_for_token(login_data: LoginRequest):
     with Session(engine) as session:
-        # Try to find user by email or login_id
         from sqlalchemy import or_
         statement = select(User).where(
             or_(
@@ -60,7 +62,6 @@ def login_for_token(login_data: LoginRequest):
 @router.post("/users/", response_model=UserRead)
 def create_user(data: UserCreate):
     with Session(engine) as session:
-        # simple uniqueness check
         statement = select(User).where(User.login_id == data.login_id)
         exists = session.exec(statement).first()
         if exists:
@@ -83,6 +84,11 @@ def create_user(data: UserCreate):
         session.commit()
         session.refresh(user)
 
+        assign_community(session, user)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
         return UserRead(id=user.id, name=user.name, birth_year=user.birth_year, region=user.region, school_name=user.school_name)
 
 
@@ -91,13 +97,22 @@ def get_my_info(current_user: User = Depends(get_current_user)):
     return UserRead(id=current_user.id, name=current_user.name, birth_year=current_user.birth_year, region=current_user.region, school_name=current_user.school_name)
 
 
+# 💡 [수정됨] 추천 친구 API 로직 교체
 @router.get("/users/me/recommended", response_model=list[UserRead])
 def recommended(current_user: User = Depends(get_current_user)):
-    # simple stub — return an empty list or a few users
     with Session(engine) as session:
-        statement = select(User).limit(10)
-        users = session.exec(statement).all()
-        return [UserRead(id=u.id, name=u.name, birth_year=u.birth_year, region=u.region, school_name=u.school_name) for u in users if u.id != current_user.id]
+        # 방금 만든 추천 알고리즘 서비스 호출!
+        friends = get_recommended_friends(session, current_user)
+        
+        return [
+            UserRead(
+                id=u.id, 
+                name=u.name, 
+                birth_year=u.birth_year, 
+                region=u.region, 
+                school_name=u.school_name
+            ) for u in friends
+        ]
 
 
 @router.put("/users/me", response_model=UserRead)
@@ -132,6 +147,11 @@ def update_my_info(data: UserUpdate, token: str = Depends(oauth2_scheme)):
         if data.admission_year is not None:
             user.admission_year = data.admission_year
 
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        assign_community(session, user)
         session.add(user)
         session.commit()
         session.refresh(user)

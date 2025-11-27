@@ -1,181 +1,181 @@
 import 'package:flutter/material.dart';
-
-class RecommendedFriend {
-  final String name;
-  final String schoolInfo; // 예: "서울 A초 08학번"
-  final List<String> commonTags; // 공통점 태그
-  bool isFollowing; // 친구추가 되었는지 여부
-
-  RecommendedFriend({
-    required this.name,
-    required this.schoolInfo,
-    required this.commonTags,
-    this.isFollowing = false,
-  });
-}
+import '../../services/api_service.dart';
+import '../../models/user.dart';
 
 class RecommendedFriendsScreen extends StatefulWidget {
   const RecommendedFriendsScreen({super.key});
 
   @override
-  State<RecommendedFriendsScreen> createState() =>
-      _RecommendedFriendsScreenState();
+  State<RecommendedFriendsScreen> createState() => _RecommendedFriendsScreenState();
 }
 
 class _RecommendedFriendsScreenState extends State<RecommendedFriendsScreen> {
-  // TODO: 나중엔 API로 받으면 됨. 지금은 하드코딩
-  final List<RecommendedFriend> _friends = [
-    RecommendedFriend(
-      name: '김민수',
-      schoolInfo: '서울 A초 08학번',
-      commonTags: ['같은 초등학교', '08학번', '농구부'],
-    ),
-    RecommendedFriend(
-      name: '이수진',
-      schoolInfo: '부산 B중 11학번',
-      commonTags: ['같은 중학교', '합창단', '추억 키워드: 수련회'],
-    ),
-    RecommendedFriend(
-      name: '박지훈',
-      schoolInfo: '인천 C고 14학번',
-      commonTags: ['같은 고등학교', '기숙사', '야간자율'],
-    ),
-  ];
+  // 친구 목록을 담을 변수 (로딩이 끝나면 채워짐)
+  List<User>? _recommendedFriends;
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  void _toggleFollow(int index) {
-    setState(() {
-      _friends[index].isFollowing = !_friends[index].isFollowing;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadFriends();
+  }
+
+  // 서버에서 데이터 불러오기
+  Future<void> _loadFriends() async {
+    try {
+      final friends = await ApiService.getRecommendedFriends();
+      setState(() {
+        _recommendedFriends = friends;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('추천 친구'),
+        title: const Text("추천 친구"),
+        centerTitle: false,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        titleTextStyle: const TextStyle(
+          color: Colors.black,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: _friends.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final f = _friends[index];
-          return _FriendCard(
-            friend: f,
-            onFollowPressed: () => _toggleFollow(index),
-          );
-        },
-      ),
+      body: _buildBody(),
     );
   }
-}
 
-class _FriendCard extends StatelessWidget {
-  final RecommendedFriend friend;
-  final VoidCallback onFollowPressed;
+  Widget _buildBody() {
+    // 1. 로딩 중
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+   
+    // 2. 에러 발생
+    if (_errorMessage != null) {
+      return Center(child: Text("오류: $_errorMessage"));
+    }
 
-  const _FriendCard({
-    required this.friend,
-    required this.onFollowPressed,
-  });
+    // 3. 데이터 없음 (모두 친구 추가했거나 추천 대상이 없는 경우)
+    if (_recommendedFriends == null || _recommendedFriends!.isEmpty) {
+      return const Center(
+        child: Text(
+          "새로운 추천 친구가 없어요 🎉\n모든 친구를 찾으셨나요?",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      );
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    final initials = friend.name.isNotEmpty ? friend.name[0] : '?';
+    // 4. 리스트 보여주기
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _recommendedFriends!.length,
+      separatorBuilder: (ctx, i) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final user = _recommendedFriends![index];
+        return _buildFriendCard(user);
+      },
+    );
+  }
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+  // 친구 카드 디자인 위젯
+  Widget _buildFriendCard(User user) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Colors.black12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 왼쪽 프로필 동그라미
-            CircleAvatar(
-              radius: 22,
-              child: Text(
-                initials,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // 가운데 정보
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    friend.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    friend.schoolInfo,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: -4,
-                    children: friend.commonTags
-                        .map(
-                          (t) => Chip(
-                            label: Text(
-                              t,
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                            visualDensity: VisualDensity.compact,
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 4),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 8),
-
-            // 오른쪽 친구추가 버튼
-            Column(
+      child: Row(
+        children: [
+          // 프로필 아이콘
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: Colors.grey[200],
+            child: const Icon(Icons.person, color: Colors.grey),
+          ),
+          const SizedBox(width: 16),
+         
+          // 이름 및 정보
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FilledButton.tonal(
-                  onPressed: onFollowPressed,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(80, 36),
+                Text(
+                  user.name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: Text(
-                    friend.isFollowing ? '추가됨' : '친구 추가',
-                    style: const TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "${user.school ?? '학교 정보 없음'} · ${user.region ?? '지역 정보 없음'}",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
                   ),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+
+          // 친구 추가 버튼
+          ElevatedButton(
+            onPressed: () async {
+              // 1. API 호출
+              bool success = await ApiService.addFriend(user.id);
+             
+              if (success) {
+                // 2. 성공 시, 화면 목록에서 즉시 제거 (UX 향상) 🔥
+                setState(() {
+                  _recommendedFriends?.removeWhere((u) => u.id == user.id);
+                });
+
+                // 3. 안내 메시지
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("${user.name}님과 친구가 되었습니다!"),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              minimumSize: Size.zero,
+            ),
+            child: const Text(
+              "친구 추가",
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
-
-
-
-
-

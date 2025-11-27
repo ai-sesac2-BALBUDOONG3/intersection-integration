@@ -19,6 +19,8 @@ class UserCreate(BaseModel):
     school_name: Optional[str] = None
     school_type: Optional[str] = None
     admission_year: Optional[int] = None
+    profile_image: Optional[str] = None
+    background_image: Optional[str] = None    
 
 class UserRead(BaseModel):
     id: int
@@ -37,14 +39,18 @@ class UserUpdate(BaseModel):
     school_name: Optional[str] = None
     school_type: Optional[str] = None
     admission_year: Optional[int] = None
+    profile_image: Optional[str] = None
+    background_image: Optional[str] = None
 
 class PostCreate(BaseModel):
     content: str
+    image_url: Optional[str] = None  # 📷 [추가됨]
 
 class PostRead(BaseModel):
     id: int
     author_id: int
     content: str
+    image_url: Optional[str] = None  # 📷 [추가됨]
     created_at: Optional[str] = None
 
 class CommentCreate(BaseModel):
