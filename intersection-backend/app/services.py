@@ -1,6 +1,7 @@
 from sqlmodel import Session, select
 from sqlalchemy import case, desc
-from .models import Community, User, UserFriendship  # 👈 UserFriendship 추가됨
+from .models import Community, User, UserFriendship
+
 
 def assign_community(session: Session, user: User) -> User:
     """
@@ -37,10 +38,10 @@ def get_recommended_friends(session: Session, user: User, limit: int = 20) -> li
     """
     추천 친구 알고리즘 (Phase 2 + Filter)
     - 학교, 입학년도, 지역이 일치하는 항목마다 점수를 부여 (+1점씩)
-    - 🔥 [수정됨] 이미 친구 추가한 사람은 목록에서 제외합니다.
+    - 🔥 이미 친구 추가한 사람은 목록에서 제외합니다.
     - 점수가 높은 순으로 정렬하여 반환
     """
-    
+   
     # 1. 내가 이미 추가한 친구들의 ID 목록 조회 (SubQuery)
     #    (친구 관계 테이블에서 user_id가 '나'인 데이터의 friend_id를 찾음)
     friend_subquery = select(UserFriendship.friend_user_id).where(
@@ -65,8 +66,8 @@ def get_recommended_friends(session: Session, user: User, limit: int = 20) -> li
     )
 
     results = session.exec(statement).all()
-    
+   
     # 교집합 점수가 1점 이상인 사람만 반환
     recommended_users = [row[0] for row in results if row[1] > 0]
-    
+   
     return recommended_users
