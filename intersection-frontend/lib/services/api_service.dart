@@ -385,4 +385,16 @@ class ApiService {
 
     return response.statusCode == 200;
   }
+
+  /// 채팅방 삭제 (나가기)
+  static Future<bool> deleteChatRoom(int roomId) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/chat/rooms/$roomId");
+
+    final response = await http.delete(
+      url,
+      headers: _headers(json: false),
+    );
+
+    return response.statusCode == 200;
+  }
 }

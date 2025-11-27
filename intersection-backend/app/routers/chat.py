@@ -256,6 +256,34 @@ def send_chat_message(
         )
 
 
+@router.delete("/rooms/{room_id}")
+def delete_chat_room(
+    room_id: int,
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """채팅방 나가기 (삭제)"""
+    with Session(engine) as session:
+        room = session.get(ChatRoom, room_id)
+        if not room:
+            raise HTTPException(status_code=404, detail="채팅방을 찾을 수 없습니다")
+        
+        # 참여자 확인
+        if current_user_id != room.user1_id and current_user_id != room.user2_id:
+            raise HTTPException(status_code=403, detail="이 채팅방의 참여자가 아닙니다")
+        
+        # 채팅방과 관련된 모든 메시지 삭제
+        messages_statement = select(ChatMessage).where(ChatMessage.room_id == room_id)
+        messages = session.exec(messages_statement).all()
+        for message in messages:
+            session.delete(message)
+        
+        # 채팅방 삭제
+        session.delete(room)
+        session.commit()
+        
+        return {"message": "채팅방이 삭제되었습니다"}
+
+
 # ------------------------------------------------------
 # 5. WebSocket 실시간 채팅
 # ------------------------------------------------------
