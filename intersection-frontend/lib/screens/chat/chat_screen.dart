@@ -366,22 +366,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     _messageController.text += emoji.emoji;
                   });
                 },
-                config: Config(
+                config: const Config(
                   height: 256,
                   checkPlatformCompatibility: true,
-                  emojiViewConfig: EmojiViewConfig(
-                    emojiSizeMax: 28,
-                    verticalSpacing: 0,
-                    horizontalSpacing: 0,
-                    gridPadding: EdgeInsets.zero,
-                    bgColor: const Color(0xFFF2F2F2),
-                    columns: 7,
-                    replaceEmojiOnLimitExceed: false,
-                  ),
-                  skinToneConfig: const SkinToneConfig(),
-                  categoryViewConfig: const CategoryViewConfig(),
-                  bottomActionBarConfig: const BottomActionBarConfig(),
-                  searchViewConfig: const SearchViewConfig(),
                 ),
               ),
             ),
