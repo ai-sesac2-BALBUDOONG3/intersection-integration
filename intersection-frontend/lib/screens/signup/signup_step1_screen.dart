@@ -40,8 +40,9 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
   }
 
   bool _isValidEmail(String email) {
+    // 마지막의 '\$'를 '$'로 수정했습니다.
     final emailRegex =
-        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\$');
+        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'); 
     return emailRegex.hasMatch(email);
   }
 
