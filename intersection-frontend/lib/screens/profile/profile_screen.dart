@@ -7,6 +7,8 @@ import 'package:intersection/data/app_state.dart';
 import 'package:intersection/screens/profile/edit_profile_screen.dart';
 import 'package:intersection/screens/common/image_viewer.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:intersection/screens/auth/landing_screen.dart';
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -299,9 +301,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         if (!mounted) return;
 
-                        Navigator.pushNamedAndRemoveUntil(
+                        Navigator.pushAndRemoveUntil(
                           context,
-                          '/landing',
+                          MaterialPageRoute(builder: (_) => const LandingScreen()),
                           (route) => false,
                         );
                       },
