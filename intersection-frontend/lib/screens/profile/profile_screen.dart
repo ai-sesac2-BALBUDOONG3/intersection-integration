@@ -296,17 +296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         backgroundColor: Colors.redAccent,
                         foregroundColor: Colors.white,
                       ),
-                      onPressed: () async {
-                        await AppState.logout();
-
-                        if (!mounted) return;
-
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LandingScreen()),
-                          (route) => false,
-                        );
-                      },
+                      onPressed: () => _showLogoutConfirmDialog(context),
                       child: const Text(
                         "로그아웃",
                         style: TextStyle(
@@ -322,6 +312,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// 로그아웃 확인 다이얼로그
+  void _showLogoutConfirmDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text(
+            '로그아웃',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            '정말 로그아웃 하시겠습니까?\n\n로그아웃 시 다음 데이터가 삭제됩니다:\n'
+            '• 로그인 토큰 (JWT)\n'
+            '• 사용자 정보\n'
+            '• 친구 목록 캐시\n'
+            '• 자동 로그인 정보',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text(
+                '취소',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                // 1. 다이얼로그 닫기
+                Navigator.of(dialogContext).pop();
+
+                // 2. 로그아웃 실행 (메모리 + 로컬 저장소 초기화)
+                await AppState.logout();
+
+                // 3. 로그인 화면으로 이동
+                if (!context.mounted) return;
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LandingScreen()),
+                  (route) => false,
+                );
+              },
+              child: const Text(
+                '로그아웃',
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
