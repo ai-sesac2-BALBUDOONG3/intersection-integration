@@ -5,6 +5,7 @@ import 'package:intersection/screens/chat/chat_screen.dart';
 import 'package:intersection/screens/friends/friend_profile_screen.dart';
 import 'package:intersection/screens/profile/profile_screen.dart';
 import 'package:intersection/services/api_service.dart';
+import 'dart:io';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -21,6 +22,20 @@ class _FriendsScreenState extends State<FriendsScreen> {
   void initState() {
     super.initState();
     _loadFriends();
+
+    // 🔥 프로필 변경 감지 → 자동 setState
+    AppState.addListener(_refreshOnProfileUpdate);
+  }
+
+  @override
+  void dispose() {
+    AppState.removeListener(_refreshOnProfileUpdate);
+    super.dispose();
+  }
+
+  /// 🔥 프로필 업데이트 신호 받으면 전체 갱신
+  void _refreshOnProfileUpdate() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadFriends() async {
@@ -59,9 +74,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
           _buildMyProfile(currentUser),
           const SizedBox(height: 28),
 
-          // ---------------------------------------
-          // 친구 목록 헤더
-          // ---------------------------------------
           GestureDetector(
             onTap: () {
               setState(() {
@@ -79,9 +91,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 ),
                 const Spacer(),
                 Icon(
-                  _friendsExpanded
-                      ? Icons.expand_less
-                      : Icons.expand_more,
+                  _friendsExpanded ? Icons.expand_less : Icons.expand_more,
                   size: 26,
                 ),
               ],
@@ -98,7 +108,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   // ============================================================
-  // 🔥 내 프로필 카드 (Threads 스타일 리팩토링)
+  // 🔥 내 프로필 카드
   // ============================================================
   Widget _buildMyProfile(User? user) {
     if (user == null) return const SizedBox();
@@ -112,9 +122,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
       ),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 32,
-            child: Icon(Icons.person, size: 34),
+            backgroundImage: user.profileImageBytes != null
+                ? MemoryImage(user.profileImageBytes!)
+                : (user.profileImageUrl != null
+                    ? FileImage(File(user.profileImageUrl!))
+                    : null) as ImageProvider?,
+            child: (user.profileImageBytes == null &&
+                    user.profileImageUrl == null)
+                ? const Icon(Icons.person, size: 34)
+                : null,
           ),
           const SizedBox(width: 14),
 
@@ -141,7 +159,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ),
           ),
 
-          // 🔥 편집 아이콘 → 내 프로필로 이동
+          // 🔥 내 프로필 화면 이동 버튼
           IconButton(
             icon: const Icon(Icons.edit, size: 20),
             onPressed: () {
@@ -157,7 +175,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   // ============================================================
-  // 🔥 친구 카드 (전체 리팩토링)
+  // 🔥 친구 카드
   // ============================================================
   Widget _buildFriendTile(User user) {
     return Container(
@@ -170,9 +188,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
       ),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 30,
-            child: Icon(Icons.person, size: 30),
+            backgroundImage: user.profileImageBytes != null
+                ? MemoryImage(user.profileImageBytes!)
+                : (user.profileImageUrl != null
+                    ? FileImage(File(user.profileImageUrl!))
+                    : null) as ImageProvider?,
+            child: (user.profileImageBytes == null &&
+                    user.profileImageUrl == null)
+                ? const Icon(Icons.person, size: 30)
+                : null,
           ),
           const SizedBox(width: 14),
 
@@ -219,13 +245,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ),
           ),
 
-          // 🔥 채팅 버튼 Pill 형태
           ElevatedButton(
             onPressed: () => _startChat(user),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30),
               ),
@@ -244,7 +270,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
-  /// 채팅 시작하기
   Future<void> _startChat(User friend) async {
     showDialog(
       context: context,

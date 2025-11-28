@@ -1,7 +1,7 @@
 // lib/screens/profile/profile_screen.dart
 import 'dart:io';
 import 'dart:typed_data';
-import 'dart:convert'; // 🔵 base64 인코딩 위해 필요
+import 'dart:convert'; // base64 인코딩
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intersection/data/app_state.dart';
@@ -43,9 +43,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
     });
+
+    // 🔥 추가됨: 모든 화면에 프로필 갱신 알림
+    AppState.updateProfile();
   }
 
-  // 🔵 프로필 피드용 이미지 선택 함수 추가
+  // 🔵 피드 이미지 추가
   Future<void> _pickFeedImage() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
@@ -57,22 +60,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final file = result.files.first;
     final user = AppState.currentUser!;
 
-    // 웹 처리
     if (kIsWeb) {
       if (file.bytes != null) {
         final base64Str = base64Encode(file.bytes!);
         final dataUrl = "data:image/png;base64,$base64Str";
         user.profileFeedImages.add(dataUrl);
       }
-    }
-    // 앱 처리
-    else {
+    } else {
       if (file.path != null) {
         user.profileFeedImages.add(file.path!);
       }
     }
 
     setState(() {});
+
+    // 🔥 추가됨: 피드 이미지 변경도 전파
+    AppState.updateProfile();
   }
 
   ImageProvider _provider(String? url, Uint8List? bytes) {
@@ -218,7 +221,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 30),
 
-            // 🔵 피드 + 사진 추가 버튼
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -231,8 +233,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         .titleMedium!
                         .copyWith(fontWeight: FontWeight.w600),
                   ),
-
-                  // 🔵 사진 추가 버튼
                   TextButton(
                     onPressed: _pickFeedImage,
                     child: const Text("사진 추가"),
@@ -243,7 +243,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 12),
 
-            // 🔵 profileFeedImages로 교체
             if (user.profileFeedImages.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
@@ -264,7 +263,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 itemBuilder: (context, index) {
                   final img = user.profileFeedImages[index];
-
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -297,15 +295,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   const Divider(),
                   const SizedBox(height: 20),
-
                   Text("학교: ${user.school}",
                       style: const TextStyle(fontSize: 16)),
                   const SizedBox(height: 10),
-
                   Text("지역: ${user.region}",
                       style: const TextStyle(fontSize: 16)),
                   const SizedBox(height: 10),
-
                   Text("${user.birthYear}년생",
                       style: const TextStyle(fontSize: 16)),
                   const SizedBox(height: 30),
@@ -353,7 +348,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// 로그아웃 확인 다이얼로그
   void _showLogoutConfirmDialog(BuildContext context) {
     showDialog(
       context: context,
