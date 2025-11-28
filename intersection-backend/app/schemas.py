@@ -53,6 +53,11 @@ class PostRead(BaseModel):
     image_url: Optional[str] = None  # 📷 [추가됨]
     created_at: Optional[str] = None
 
+    # 👇 [추가] 작성자 정보 필드 추가
+    author_name: Optional[str] = None
+    author_school: Optional[str] = None
+    author_region: Optional[str] = None
+
 class CommentCreate(BaseModel):
     content: str
 

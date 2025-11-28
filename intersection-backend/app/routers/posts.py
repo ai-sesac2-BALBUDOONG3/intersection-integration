@@ -12,21 +12,47 @@ router = APIRouter(tags=["posts"])
 @router.post("/users/me/posts/", response_model=PostRead)
 def create_post(payload: PostCreate, current_user: User = Depends(get_current_user)):
     with Session(engine) as session:
-        post = Post(author_id=current_user.id, content=payload.content)
+        post = Post(author_id=current_user.id, content=payload.content, image_url=payload.image_url)
         session.add(post)
         session.commit()
         session.refresh(post)
-        return PostRead(id=post.id, author_id=post.author_id, content=post.content, created_at=post.created_at.isoformat())
+
+        return PostRead(
+            id=post.id, 
+            author_id=post.author_id, 
+            content=post.content, 
+            image_url=post.image_url,
+            created_at=post.created_at.isoformat(),
+            author_name=current_user.name,          # 추가됨
+            author_school=current_user.school_name, # 추가됨
+            author_region=current_user.region       # 추가됨
+        )
 
 
 @router.get("/posts/", response_model=List[PostRead])
 def list_posts():
     with Session(engine) as session:
-        statement = select(Post).order_by(Post.created_at.desc()).limit(100)
-        posts = session.exec(statement).all()
-        return [PostRead(id=p.id, author_id=p.author_id, content=p.content, created_at=p.created_at.isoformat()) for p in posts]
+        # 👇 Post와 User를 조인(Join)하여 작성자 정보를 함께 가져옵니다.
+        statement = select(Post, User).join(User, Post.author_id == User.id).order_by(Post.created_at.desc()).limit(100)
+        results = session.exec(statement).all()
+        
+        post_reads = []
+        for post, user in results:
+            post_reads.append(PostRead(
+                id=post.id,
+                author_id=post.author_id,
+                content=post.content,
+                image_url=post.image_url,
+                created_at=post.created_at.isoformat(),
+                # 👇 유저 테이블에서 가져온 정보를 채워줍니다.
+                author_name=user.name,
+                author_school=user.school_name,
+                author_region=user.region
+            ))
+        return post_reads
 
 
+# update_post는 로직이 비슷하므로 필요하면 위 create_post 방식을 참고해 수정하세요.
 @router.put("/posts/{post_id}", response_model=PostRead)
 def update_post(post_id: int, payload: PostCreate, current_user: User = Depends(get_current_user)):
     with Session(engine) as session:
@@ -36,11 +62,25 @@ def update_post(post_id: int, payload: PostCreate, current_user: User = Depends(
             raise HTTPException(status_code=404, detail="Post not found")
         if post.author_id != current_user.id:
             raise HTTPException(status_code=403, detail="Not post author")
+            
         post.content = payload.content
+        post.image_url = payload.image_url  # 📷 [추가됨]
+        
         session.add(post)
         session.commit()
         session.refresh(post)
-        return PostRead(id=post.id, author_id=post.author_id, content=post.content, created_at=post.created_at.isoformat())
+        
+        # 👇 수정 후 응답에도 작성자 정보 포함
+        return PostRead(
+            id=post.id, 
+            author_id=post.author_id, 
+            content=post.content, 
+            image_url=post.image_url,
+            created_at=post.created_at.isoformat(),
+            author_name=current_user.name,
+            author_school=current_user.school_name,
+            author_region=current_user.region
+        )
 
 
 @router.delete("/posts/{post_id}")
