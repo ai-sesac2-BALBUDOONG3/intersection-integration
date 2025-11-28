@@ -6,7 +6,7 @@ import 'package:intersection/config/api_config.dart';
 import 'package:intersection/data/app_state.dart';
 import 'package:intersection/screens/main_tab_screen.dart';
 import 'package:intersection/screens/signup/signup_screen.dart';
-import 'package:intersection/services/api_service.dart';  // ⭐ 추가
+import 'package:intersection/services/api_service.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -40,8 +40,6 @@ class _LoginScreenState extends State<LoginScreen> {
       // 1) 로그인 → 토큰 획득
       // -----------------------------------------
       final token = await ApiService.login(email, password);
-
-      // 임시 저장
       AppState.token = token;
 
       // -----------------------------------------
@@ -52,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // -----------------------------------------
       // 3) AppState에 로그인 정보 적용
       // -----------------------------------------
-      AppState.login(token, user);
+      await AppState.login(token, user);   // ⭐ await 추가됨 ⭐
 
       if (!mounted) return;
 
@@ -84,19 +82,18 @@ class _LoginScreenState extends State<LoginScreen> {
       final token = await ApiService.kakaoDevLogin();
       AppState.token = token;
 
-      // Try load user info from backend. If user exists, go to recommended
-      // friends screen. If the server says the user is missing, navigate to
-      // signup flow so the user can register.
       try {
         final user = await ApiService.getMyInfo();
-        AppState.login(token, user);
+
+        // ⭐ await 추가
+        await AppState.login(token, user);
 
         if (!mounted) return;
         setState(() => _isLoading = false);
 
-        // user exists — check whether profile is complete. If not, go to
-        // Signup so the user can finish onboarding.
-        final needsProfile = user.birthYear == 0 || user.region.isEmpty || user.school.isEmpty;
+        final needsProfile =
+            user.birthYear == 0 || user.region.isEmpty || user.school.isEmpty;
+
         if (needsProfile) {
           Navigator.pushAndRemoveUntil(
             context,
@@ -106,12 +103,12 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (_) => const MainTabScreen(initialIndex: 1)),
+            MaterialPageRoute(
+                builder: (_) => const MainTabScreen(initialIndex: 1)),
             (route) => false,
           );
         }
       } catch (e) {
-        // probably user not present — go to signup step with default initial data
         if (!mounted) return;
         setState(() => _isLoading = false);
 
@@ -123,26 +120,31 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("카카오 로그인 실패: $e")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("카카오 로그인 실패: $e")));
     }
   }
 
   // ----------------------------------------------------
-  // Kakao - full OAuth flow using flutter_web_auth
+  // Kakao OAuth flow (flutter_web_auth)
   // ----------------------------------------------------
   Future<void> _kakaoLoginReal() async {
     setState(() => _isLoading = true);
 
     try {
-      // 웹에서는 client_redirect 없이 직접 카카오 OAuth 사용
-      final url = kIsWeb 
+      final url = kIsWeb
           ? Uri.parse('${ApiConfig.baseUrl}/auth/kakao/login')
-          : Uri.parse('${ApiConfig.baseUrl}/auth/kakao/login?client_redirect=${Uri.encodeComponent('intersection://oauth')}');
-      
-      final result = await FlutterWebAuth.authenticate(url: url.toString(), callbackUrlScheme: kIsWeb ? 'http' : 'intersection');
+          : Uri.parse(
+              '${ApiConfig.baseUrl}/auth/kakao/login?client_redirect=${Uri.encodeComponent('intersection://oauth')}',
+            );
+
+      final result = await FlutterWebAuth.authenticate(
+          url: url.toString(),
+          callbackUrlScheme: kIsWeb ? 'http' : 'intersection');
 
       final uri = Uri.parse(result);
       String token = '';
+
       if (uri.fragment.isNotEmpty) {
         final params = Uri.splitQueryString(uri.fragment);
         token = params['access_token'] ?? '';
@@ -153,16 +155,19 @@ class _LoginScreenState extends State<LoginScreen> {
       if (token.isEmpty) throw Exception('토큰을 받지 못했습니다');
 
       AppState.token = token;
-      // Try to fetch the user from server. If present -> recommended friends,
-      // otherwise go to signup flow so they can finish registration.
+
       try {
         final user = await ApiService.getMyInfo();
-        AppState.login(token, user);
+
+        // ⭐ await 추가
+        await AppState.login(token, user);
 
         if (!mounted) return;
         setState(() => _isLoading = false);
 
-        final needsProfile = user.birthYear == 0 || user.region.isEmpty || user.school.isEmpty;
+        final needsProfile =
+            user.birthYear == 0 || user.region.isEmpty || user.school.isEmpty;
+
         if (needsProfile) {
           Navigator.pushAndRemoveUntil(
             context,
@@ -172,12 +177,13 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (_) => const MainTabScreen(initialIndex: 1)),
+            MaterialPageRoute(
+              builder: (_) => const MainTabScreen(initialIndex: 1),
+            ),
             (route) => false,
           );
         }
       } catch (e) {
-        // user not found on server — go to signup
         if (!mounted) return;
         setState(() => _isLoading = false);
 
@@ -189,7 +195,8 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('카카오 로그인 실패: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('카카오 로그인 실패: $e')));
     }
   }
 
@@ -251,7 +258,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: 14),
-            // keep dev button as fallback
             SizedBox(
               width: double.infinity,
               child: FilledButton.tonal(
@@ -261,7 +267,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     : const Text("카카오로 로그인 (개발용)"),
               ),
             ),
-            const SizedBox(height: 14),
             const SizedBox(height: 14),
             TextButton(
               onPressed: () {
@@ -274,7 +279,7 @@ class _LoginScreenState extends State<LoginScreen> {
               },
               child: const Text(
                 "아직 계정이 없나요? 회원가입",
-                style: const TextStyle(fontSize: 14),
+                style: TextStyle(fontSize: 14),
               ),
             ),
           ],

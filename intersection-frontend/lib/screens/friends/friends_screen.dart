@@ -3,6 +3,7 @@ import 'package:intersection/data/app_state.dart';
 import 'package:intersection/models/user.dart';
 import 'package:intersection/screens/chat/chat_screen.dart';
 import 'package:intersection/screens/friends/friend_profile_screen.dart';
+import 'package:intersection/screens/profile/profile_screen.dart';
 import 'package:intersection/services/api_service.dart';
 
 class FriendsScreen extends StatefulWidget {
@@ -23,7 +24,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Future<void> _loadFriends() async {
-    // 로그인하지 않은 경우 API 호출하지 않음
     if (AppState.token == null) {
       setState(() => _isLoading = false);
       return;
@@ -54,11 +54,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
     return RefreshIndicator(
       onRefresh: _loadFriends,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
         children: [
           _buildMyProfile(currentUser),
-          const SizedBox(height: 20),
+          const SizedBox(height: 28),
 
+          // ---------------------------------------
+          // 친구 목록 헤더
+          // ---------------------------------------
           GestureDetector(
             onTap: () {
               setState(() {
@@ -71,20 +74,21 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   '친구 ${friends.length}',
                   style: const TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const Spacer(),
                 Icon(
                   _friendsExpanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
+                      ? Icons.expand_less
+                      : Icons.expand_more,
+                  size: 26,
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           if (_friendsExpanded)
             ...friends.map((user) => _buildFriendTile(user)).toList(),
@@ -93,69 +97,155 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
+  // ============================================================
+  // 🔥 내 프로필 카드 (Threads 스타일 리팩토링)
+  // ============================================================
   Widget _buildMyProfile(User? user) {
     if (user == null) return const SizedBox();
 
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      child: ListTile(
-        leading: const CircleAvatar(
-          radius: 26,
-          child: Icon(Icons.person),
-        ),
-        title: Text(
-          user.name,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        subtitle: Text('${user.school} · ${user.region}'),
-        trailing: const Icon(Icons.edit, size: 20),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 32,
+            child: Icon(Icons.person, size: 34),
+          ),
+          const SizedBox(width: 14),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "${user.school} · ${user.region}",
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 🔥 편집 아이콘 → 내 프로필로 이동
+          IconButton(
+            icon: const Icon(Icons.edit, size: 20),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+            },
+          )
+        ],
       ),
     );
   }
 
+  // ============================================================
+  // 🔥 친구 카드 (전체 리팩토링)
+  // ============================================================
   Widget _buildFriendTile(User user) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.person)),
-        title: Row(
-          children: [
-            Text(user.name),
-            const SizedBox(width: 6),
-            const Icon(Icons.check_circle, color: Colors.green, size: 16),
-          ],
-        ),
-        subtitle: Text('${user.school} · ${user.region}'),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => FriendProfileScreen(user: user),
-            ),
-          );
-        },
-        trailing: OutlinedButton(
-          onPressed: () => _startChat(user),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            side: const BorderSide(color: Colors.blue),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 30,
+            child: Icon(Icons.person, size: 30),
           ),
-          child: const Text(
-            '채팅',
-            style: TextStyle(
-              color: Colors.blue,
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: 14),
+
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FriendProfileScreen(user: user),
+                  ),
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        user.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "${user.school} · ${user.region}",
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
+
+          // 🔥 채팅 버튼 Pill 형태
+          ElevatedButton(
+            onPressed: () => _startChat(user),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              "채팅",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   /// 채팅 시작하기
   Future<void> _startChat(User friend) async {
-    // 로딩 표시
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -165,29 +255,23 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
 
     try {
-      // 채팅방 생성 또는 가져오기
       final chatRoom = await ApiService.createOrGetChatRoom(friend.id);
 
       if (!mounted) return;
-
-      // 로딩 닫기
       Navigator.pop(context);
 
-      // 채팅 화면으로 이동
-            Navigator.push(
-              context,
-              MaterialPageRoute(
+      Navigator.push(
+        context,
+        MaterialPageRoute(
           builder: (_) => ChatScreen(
             roomId: chatRoom.id,
             friendId: friend.id,
             friendName: friend.name,
+          ),
         ),
-      ),
-    );
+      );
     } catch (e) {
       if (!mounted) return;
-
-      // 로딩 닫기
       Navigator.pop(context);
 
       ScaffoldMessenger.of(context).showSnackBar(

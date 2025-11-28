@@ -81,7 +81,7 @@ class _RecommendedFriendsScreenState extends State<RecommendedFriendsScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         const Text(
-          '당신과 지역·학교·나이가 유사한 친구들을 추천해요',
+          '지역·학교·나이가 유사한 친구들을 추천해요',
           style: TextStyle(fontSize: 13, color: Colors.grey),
         ),
         const SizedBox(height: 16),

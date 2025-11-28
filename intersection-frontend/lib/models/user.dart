@@ -16,7 +16,8 @@ class User {
   Uint8List? profileImageBytes;
   Uint8List? backgroundImageBytes;
 
-  List<String> feedImages;
+  // 기존 feedImages → 프로필 피드 전용으로 이름 변경
+  List<String> profileFeedImages;
 
   User({
     required this.id,
@@ -28,8 +29,8 @@ class User {
     this.backgroundImageUrl,
     this.profileImageBytes,
     this.backgroundImageBytes,
-    List<String>? feedImages,
-  }) : feedImages = feedImages ?? [];
+    List<String>? profileFeedImages,
+  }) : profileFeedImages = profileFeedImages ?? [];
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -40,8 +41,8 @@ class User {
       school: json["school_name"] ?? json["school"] ?? "",
       profileImageUrl: json["profile_image"],
       backgroundImageUrl: json["background_image"],
-      feedImages: (json["feed_images"] != null)
-          ? List<String>.from(json["feed_images"])
+      profileFeedImages: (json["profile_feed_images"] != null)
+          ? List<String>.from(json["profile_feed_images"])
           : [],
     );
   }
@@ -55,7 +56,9 @@ class User {
       "school_name": school,
       "profile_image": profileImageUrl,
       "background_image": backgroundImageUrl,
-      "feed_images": feedImages,
+
+      // 저장 시에도 필드 이름 변경
+      "profile_feed_images": profileFeedImages,
     };
   }
 }

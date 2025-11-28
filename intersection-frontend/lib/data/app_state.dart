@@ -20,6 +20,9 @@ class AppState {
   /// 🔥 모든 사용자(샘플/로컬 저장용)
   static List<User> allUsers = [];
 
+  /// 🔥 신규 가입자인지 여부 (회원가입 후 첫 진입 시 추천친구 목록으로 이동)
+  static bool isNewUser = false;
+
   /// ----------------------------------------------------
   /// 친구 추가 (로컬 반영)
   /// ----------------------------------------------------
@@ -42,7 +45,11 @@ class AppState {
   static Future<void> login(String newToken, User user) async {
     token = newToken;
     currentUser = user;
-    // 로컬 스토리지에도 저장 (자동 로그인용)
+
+    /// 로그인한 사용자는 신규 사용자가 아님
+    isNewUser = false;
+
+    // 로컬 스토리지 저장 (자동 로그인)
     await UserStorage.saveLoginSession(newToken, user);
   }
 
@@ -55,10 +62,10 @@ class AppState {
     friends = [];
     communityPosts = [];
 
-    // 🔥 SharedPreferences 초기화 → 자동로그인 제거
+    // 🔥 자동로그인 제거
     await UserStorage.clear();
   }
+
   /// 내가 참여해본 채팅방 목록 (friendId 기반)
   static List<int> chatList = [];
-
 }

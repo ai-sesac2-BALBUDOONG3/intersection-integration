@@ -17,7 +17,6 @@ class FriendProfileScreen extends StatefulWidget {
 }
 
 class _FriendProfileScreenState extends State<FriendProfileScreen> {
-
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
@@ -77,8 +76,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              ImageViewer(imageUrl: widget.user.backgroundImageUrl!),
+                          builder: (_) => ImageViewer(
+                              imageUrl: widget.user.backgroundImageUrl!),
                         ),
                       );
                     }
@@ -89,13 +88,17 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                     decoration: BoxDecoration(
                       image: widget.user.backgroundImageUrl != null
                           ? DecorationImage(
-                              image: _imageProvider(widget.user.backgroundImageUrl!),
+                              image: _imageProvider(
+                                  widget.user.backgroundImageUrl!),
                               fit: BoxFit.cover,
                             )
                           : null,
                       gradient: widget.user.backgroundImageUrl == null
                           ? const LinearGradient(
-                              colors: [Color(0xFF1a1a1a), Color(0xFF444444)],
+                              colors: [
+                                Color(0xFF1a1a1a),
+                                Color(0xFF444444)
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             )
@@ -127,8 +130,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                       tag: "friend-profile-${widget.user.id}",
                       child: CircleAvatar(
                         radius: 50,
-                        backgroundImage:
-                            hasProfileImage ? _imageProvider(widget.user.profileImageUrl!) : null,
+                        backgroundImage: hasProfileImage
+                            ? _imageProvider(widget.user.profileImageUrl!)
+                            : null,
                         backgroundColor: Colors.black,
                         child: hasProfileImage
                             ? null
@@ -148,7 +152,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
             // ==========================
             Text(
               widget.user.name,
-              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
+              style:
+                  const TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
             Text(
@@ -177,7 +182,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
 
             const SizedBox(height: 12),
 
-            if (widget.user.feedImages.isEmpty)
+            // 🔵 feedImages → profileFeedImages 로 교체
+            if (widget.user.profileFeedImages.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
                 child: Text(
@@ -189,21 +195,23 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               GridView.builder(
                 physics: const NeverScrollableScrollPhysics(),
                 shrinkWrap: true,
-                itemCount: widget.user.feedImages.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                itemCount: widget.user.profileFeedImages.length,
+                gridDelegate:
+                    const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   mainAxisSpacing: 4,
                   crossAxisSpacing: 4,
                 ),
                 itemBuilder: (context, index) {
-                  final img = widget.user.feedImages[index];
+                  final img = widget.user.profileFeedImages[index];
 
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ImageViewer(imageUrl: img),
+                          builder: (_) =>
+                              ImageViewer(imageUrl: img),
                         ),
                       );
                     },
@@ -291,19 +299,22 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(dialogContext);
-                
-                final success = await ApiService.blockUser(widget.user.id);
-                
+
+                final success =
+                    await ApiService.blockUser(widget.user.id);
+
                 if (success && mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${widget.user.name}님을 차단했습니다')),
+                    SnackBar(
+                        content: Text('${widget.user.name}님을 차단했습니다')),
                   );
-                  Navigator.pop(context); // 프로필 화면 닫기
+                  Navigator.pop(context);
                 }
               },
               child: const Text(
                 '차단',
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: Colors.red, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -343,9 +354,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                     const Text(
                       '신고 사유:',
                       style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                          fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
@@ -354,10 +363,9 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
+                        contentPadding:
+                            const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                       ),
                       items: const [
                         DropdownMenuItem(
@@ -391,9 +399,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                     const Text(
                       '상세 내용 (선택):',
                       style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                          fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -418,7 +424,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                 TextButton(
                   onPressed: () async {
                     Navigator.pop(dialogContext);
-                    
+
                     final success = await ApiService.reportUser(
                       userId: widget.user.id,
                       reason: selectedReason,
@@ -426,7 +432,7 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                           ? null
                           : contentController.text.trim(),
                     );
-                    
+
                     if (success && mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -438,9 +444,8 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                   child: const Text(
                     '신고',
                     style: TextStyle(
-                      color: Colors.orange,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
               ],

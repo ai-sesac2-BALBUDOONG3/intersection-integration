@@ -3,11 +3,13 @@ import 'package:intersection/screens/friends/recommended_friends_screen.dart';
 import 'package:intersection/screens/friends/friends_screen.dart';
 import 'package:intersection/screens/community/community_screen.dart';
 import 'package:intersection/screens/profile/profile_screen.dart';
-import 'package:intersection/screens/chat/chat_list_screen.dart'; // 🔥 추가 필요
+import 'package:intersection/screens/chat/chat_list_screen.dart';
 
 class MainTabScreen extends StatefulWidget {
   final int initialIndex;
-  const MainTabScreen({super.key, this.initialIndex = 1});
+
+  // 기본은 친구목록 = 0
+  const MainTabScreen({super.key, this.initialIndex = 0});
 
   @override
   State<MainTabScreen> createState() => _MainTabScreenState();
@@ -18,22 +20,41 @@ class _MainTabScreenState extends State<MainTabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 각 탭 화면
     final screens = [
       const FriendsScreen(),            // 0
       const RecommendedFriendsScreen(), // 1
       const CommunityScreen(),          // 2
-      const ChatListScreen(),           // 3 🔥 새 탭
+      const ChatListScreen(),           // 3
       const ProfileScreen(),            // 4
     ];
 
-    // 각 탭의 AppBar
+    // 🔥 AppBar 전체 간격 조절 버전
     final appBars = [
-      AppBar(title: const Text("친구 목록")),
-      AppBar(title: const Text("추천 친구")),
-      AppBar(title: const Text("커뮤니티")),
-      AppBar(title: const Text("채팅")),        // 🔥 새 AppBar
-      AppBar(title: const Text("내 정보")),
+      AppBar(
+        title: const Text("친구 목록"),
+        toolbarHeight: 64,      // 상단 여백 증가
+        titleSpacing: 16,
+      ),
+      AppBar(
+        title: const Text("추천 친구"),
+        toolbarHeight: 64,
+        titleSpacing: 16,
+      ),
+      AppBar(
+        title: const Text("커뮤니티"),
+        toolbarHeight: 64,
+        titleSpacing: 16,
+      ),
+      AppBar(
+        title: const Text("채팅"),
+        toolbarHeight: 64,
+        titleSpacing: 16,
+      ),
+      AppBar(
+        title: const Text("내 정보"),
+        toolbarHeight: 64,
+        titleSpacing: 16,
+      ),
     ];
 
     return Scaffold(
@@ -43,9 +64,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+          setState(() => _currentIndex = index);
         },
         destinations: const [
           NavigationDestination(
@@ -66,7 +85,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
           NavigationDestination(
             icon: Icon(Icons.chat_bubble_outline),
             selectedIcon: Icon(Icons.chat_bubble),
-            label: '채팅',        // 🔥 추가된 탭
+            label: '채팅',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
