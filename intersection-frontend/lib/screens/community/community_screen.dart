@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intersection/data/app_state.dart';
 import 'package:intersection/services/api_service.dart';
@@ -14,7 +15,6 @@ class CommunityScreen extends StatefulWidget {
 }
 
 class _CommunityScreenState extends State<CommunityScreen> {
-
   @override
   void initState() {
     super.initState();
@@ -46,10 +46,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 itemBuilder: (context, index) {
                   final post = posts[index];
 
-                  // 작성자 로컬 탐색
                   User? author;
                   final knownUsers = [me, ...AppState.friends];
-
                   try {
                     author = knownUsers.firstWhere(
                       (u) => u.id == post.authorId,
@@ -100,6 +98,30 @@ class _ThreadPost extends StatelessWidget {
 
   bool get isMyPost => author?.id == AppState.currentUser?.id;
 
+  // ---------------------------------------------------------
+  // 🔥 프로필 이미지 로더
+  // ---------------------------------------------------------
+  ImageProvider _profileProvider(User? u) {
+    if (u == null) {
+      return const AssetImage("assets/images/logo.png");
+    }
+
+    // 웹: bytes 우선
+    if (u.profileImageBytes != null) {
+      return MemoryImage(u.profileImageBytes!);
+    }
+
+    // 앱: 로컬 파일 우선
+    if (u.profileImageUrl != null) {
+      final file = File(u.profileImageUrl!);
+      if (file.existsSync()) {
+        return FileImage(file);
+      }
+    }
+
+    return const AssetImage("assets/images/logo.png");
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -112,7 +134,7 @@ class _ThreadPost extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🔥 프로필 클릭 가능하게
+          // 🔥 프로필 클릭 + 이미지 반영
           GestureDetector(
             onTap: () {
               if (isMyPost) {
@@ -129,15 +151,18 @@ class _ThreadPost extends StatelessWidget {
                 );
               }
             },
-            child: const CircleAvatar(
+            child: CircleAvatar(
               radius: 22,
-              child: Icon(Icons.person, size: 24),
+              backgroundImage: _profileProvider(author),
+              child: (author?.profileImageUrl == null &&
+                      author?.profileImageBytes == null)
+                  ? const Icon(Icons.person, size: 24)
+                  : null,
             ),
           ),
 
           const SizedBox(width: 12),
 
-          // 게시물 본문
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,9 +180,9 @@ class _ThreadPost extends StatelessWidget {
     );
   }
 
-  // ======================================================
-  // 🔥 헤더 (이름, 학교, 메뉴)
-  // ======================================================
+  // ---------------------------------------------------------
+  // 🔥 헤더
+  // ---------------------------------------------------------
   Widget _buildHeader(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,13 +202,14 @@ class _ThreadPost extends StatelessWidget {
               Text(
                 (post.authorSchool != null && post.authorRegion != null)
                     ? "${post.authorSchool} · ${post.authorRegion}"
-                    : (author != null ? "${author!.school} · ${author!.region}" : ""),
+                    : (author != null
+                        ? "${author!.school} · ${author!.region}"
+                        : ""),
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
           ),
         ),
-
         IconButton(
           icon: const Icon(Icons.more_horiz, size: 20),
           onPressed: () {},
@@ -194,29 +220,27 @@ class _ThreadPost extends StatelessWidget {
     );
   }
 
-  // ======================================================
-  // 🔥 본문 텍스트
-  // ======================================================
+  // ---------------------------------------------------------
+  // 🔥 본문 텍스트 (간격 좁힘)
+  // ---------------------------------------------------------
   Widget _buildContent() {
     return Text(
       post.content,
       style: const TextStyle(
         fontSize: 15,
-        height: 1.4,
+        height: 1.35, // ✔ 간격 조정됨
       ),
     );
   }
 
-  // ======================================================
-  // 🔥 댓글/좋아요 버튼 영역
-  // ======================================================
+  // ---------------------------------------------------------
+  // 🔥 Footer (댓글/좋아요)
+  // ---------------------------------------------------------
   Widget _buildFooter(BuildContext context) {
     return Row(
       children: [
         Icon(Icons.favorite_border, size: 20, color: Colors.grey.shade700),
-
         const SizedBox(width: 8),
-
         GestureDetector(
           onTap: () {
             Navigator.pushNamed(context, '/comments', arguments: post);
