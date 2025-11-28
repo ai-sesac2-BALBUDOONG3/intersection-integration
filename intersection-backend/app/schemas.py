@@ -29,6 +29,12 @@ class UserRead(BaseModel):
     region: Optional[str] = None
     school_name: Optional[str] = None
 
+# 👇 [추가] 프로필/배경 이미지 URL 필드
+    profile_image: Optional[str] = None
+    background_image: Optional[str] = None
+
+# 🖼️ [추가됨] 프로필 피드에 보여줄 이미지 목록 (URL 문자열 리스트)
+    feed_images: list[str] = []
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
