@@ -39,6 +39,12 @@ dependencies:
   flutter_web_auth:
     path: local_plugins/flutter_web_auth
   emoji_picker_flutter: ^4.4.0
+  # ✅ 새로 추가 (이 2줄만 추가!)
+  image_picker: ^1.0.4
+  image_gallery_saver: ^2.0.3
+  path_provider: ^2.1.1
+  permission_handler: ^11.0.1
+  url_launcher: ^6.2.2
 
 dev_dependencies:
   flutter_test:

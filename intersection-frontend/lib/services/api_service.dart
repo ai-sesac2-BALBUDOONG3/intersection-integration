@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'dart:io';
+
 import '../config/api_config.dart';
 import '../models/user.dart';
 import '../models/chat_room.dart';
 import '../models/chat_message.dart';
 import '../data/app_state.dart';
+import 'dart:typed_data';
 
 class ApiService {
   // ----------------------------------------------------
@@ -284,14 +287,61 @@ class ApiService {
     }
   }
 
-  /// 메시지 전송 (REST API 방식)
-  static Future<ChatMessage> sendChatMessage(int roomId, String content) async {
+  // ========================================
+  // ✅ 파일 업로드 관련 메서드 추가 (여기부터)
+  // ========================================
+  
+  /// 파일 업로드
+  static Future<Map<String, dynamic>> uploadFile(File file) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/upload");
+    
+    var request = http.MultipartRequest('POST', url);
+    
+    // JWT 토큰 추가
+    if (AppState.token != null) {
+      request.headers['Authorization'] = 'Bearer ${AppState.token}';
+    }
+    
+    // 파일 추가
+    request.files.add(await http.MultipartFile.fromPath(
+      'file',
+      file.path,
+      filename: file.path.split('/').last,
+    ));
+    
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
+    
+    if (response.statusCode == 200) {
+      return jsonDecode(responseBody) as Map<String, dynamic>;
+    } else {
+      throw Exception("파일 업로드 실패: $responseBody");
+    }
+  }
+
+  /// 메시지 전송 (파일 포함 가능) - 기존 sendChatMessage 교체
+  static Future<ChatMessage> sendChatMessage(
+    int roomId,
+    String content, {
+    String? fileUrl,
+    String? fileName,
+    int? fileSize,
+    String? fileType,
+  }) async {
     final url = Uri.parse("${ApiConfig.baseUrl}/chat/rooms/$roomId/messages");
+
+    final body = {
+      "content": content,
+      if (fileUrl != null) "file_url": fileUrl,
+      if (fileName != null) "file_name": fileName,
+      if (fileSize != null) "file_size": fileSize,
+      if (fileType != null) "file_type": fileType,
+    };
 
     final response = await http.post(
       url,
       headers: _headers(),
-      body: jsonEncode({"content": content}),
+      body: jsonEncode(body),
     );
 
     if (response.statusCode == 200) {
@@ -300,6 +350,39 @@ class ApiService {
       throw Exception("메시지 전송 실패: ${response.body}");
     }
   }
+
+  /// 이미지 메시지 전송
+  static Future<ChatMessage> sendImageMessage(int roomId, File imageFile) async {
+    final uploadResult = await uploadFile(imageFile);
+    
+    return await sendChatMessage(
+      roomId,
+      "[이미지]",
+      fileUrl: uploadResult['file_url'],
+      fileName: uploadResult['filename'],
+      fileSize: uploadResult['size'],
+      fileType: uploadResult['type'],
+    );
+  }
+
+  /// 파일 메시지 전송
+  static Future<ChatMessage> sendFileMessage(int roomId, File file) async {
+    final uploadResult = await uploadFile(file);
+    
+    final fileName = uploadResult['filename'];
+    return await sendChatMessage(
+      roomId,
+      "[파일] $fileName",
+      fileUrl: uploadResult['file_url'],
+      fileName: fileName,
+      fileSize: uploadResult['size'],
+      fileType: uploadResult['type'],
+    );
+  }
+  
+  // ========================================
+  // ✅ 파일 업로드 관련 메서드 추가 (여기까지)
+  // ========================================
 
   // ----------------------------------------------------
   // 🚫 차단 & 신고 API
@@ -423,5 +506,33 @@ class ApiService {
     );
 
     return response.statusCode == 200;
+  }
+
+  static Future<ChatMessage> sendImageMessageWeb(int roomId, Uint8List bytes, String fileName) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/upload");
+    var request = http.MultipartRequest('POST', url);
+    if (AppState.token != null) request.headers['Authorization'] = 'Bearer ${AppState.token}';
+    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
+    if (response.statusCode != 200) throw Exception("업로드 실패");
+    final uploadResult = jsonDecode(responseBody) as Map<String, dynamic>;
+    return await sendChatMessage(roomId, "[이미지]",
+      fileUrl: uploadResult['file_url'], fileName: uploadResult['filename'],
+      fileSize: uploadResult['size'], fileType: uploadResult['type']);
+  }
+
+  static Future<ChatMessage> sendFileMessageWeb(int roomId, Uint8List bytes, String fileName) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/upload");
+    var request = http.MultipartRequest('POST', url);
+    if (AppState.token != null) request.headers['Authorization'] = 'Bearer ${AppState.token}';
+    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
+    if (response.statusCode != 200) throw Exception("업로드 실패");
+    final uploadResult = jsonDecode(responseBody) as Map<String, dynamic>;
+    return await sendChatMessage(roomId, "[파일] $fileName",
+      fileUrl: uploadResult['file_url'], fileName: fileName,
+      fileSize: uploadResult['size'], fileType: uploadResult['type']);
   }
 }

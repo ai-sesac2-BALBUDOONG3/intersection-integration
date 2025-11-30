@@ -255,14 +255,46 @@ def send_chat_message(
         if room.left_user_id is not None and room.left_user_id == current_user_id:
             raise HTTPException(status_code=403, detail="나간 채팅방에서는 메시지를 보낼 수 없습니다")
         
-        # ✅ 메시지 타입 결정
+        # ========================================
+        # ✅ message_type 자동 설정 (개선)
+        # ========================================
         message_type = "normal"
+        
         if data.file_url:
-            # 파일 타입에 따라 구분
-            if data.file_type and data.file_type.startswith("image/"):
-                message_type = "image"
+            # 1. file_type으로 확인 (가장 정확)
+            if data.file_type:
+                file_type_lower = data.file_type.lower()
+                if ('image' in file_type_lower or 
+                    'png' in file_type_lower or 
+                    'jpg' in file_type_lower or 
+                    'jpeg' in file_type_lower or
+                    'gif' in file_type_lower or
+                    'webp' in file_type_lower):
+                    message_type = "image"
+                else:
+                    message_type = "file"
+            # 2. file_name으로 확인 (file_type이 없을 경우)
+            elif data.file_name:
+                file_name_lower = data.file_name.lower()
+                if (file_name_lower.endswith('.png') or 
+                    file_name_lower.endswith('.jpg') or 
+                    file_name_lower.endswith('.jpeg') or
+                    file_name_lower.endswith('.gif') or
+                    file_name_lower.endswith('.webp')):
+                    message_type = "image"
+                else:
+                    message_type = "file"
+            # 3. file_url로 확인 (최후 수단)
             else:
-                message_type = "file"
+                file_url_lower = data.file_url.lower()
+                if (file_url_lower.endswith('.png') or 
+                    file_url_lower.endswith('.jpg') or 
+                    file_url_lower.endswith('.jpeg') or
+                    file_url_lower.endswith('.gif') or
+                    file_url_lower.endswith('.webp')):
+                    message_type = "image"
+                else:
+                    message_type = "file"
         
         # 메시지 생성
         message = ChatMessage(
