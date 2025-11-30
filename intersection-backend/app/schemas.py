@@ -64,6 +64,11 @@ class PostRead(BaseModel):
     author_school: Optional[str] = None
     author_region: Optional[str] = None
 
+# 👍 [추가됨] 좋아요 관련 필드
+    like_count: int = 0       # 좋아요 수
+    is_liked: bool = False    # 내가 좋아요 눌렀는지 여부
+
+
 class CommentCreate(BaseModel):
     content: str
 
@@ -75,6 +80,22 @@ class CommentRead(BaseModel):
     user_name: Optional[str] = None
     created_at: Optional[str] = None
 
+class CommentUpdate(BaseModel):
+    """댓글 수정 요청"""
+    content: str
+
+class CommentReportCreate(BaseModel):
+    """댓글 신고 요청"""
+    reason: str
+
+class CommentReportRead(BaseModel):
+    """댓글 신고 응답"""
+    id: int
+    reporter_id: int
+    reported_comment_id: int
+    reason: str
+    status: str
+    created_at: str
 
 # ------------------------------------------------------
 # 💬 Chat (채팅) 스키마
@@ -154,4 +175,32 @@ class UserReportRead(BaseModel):
     reported_user_id: int
     reason: str
     status: str
+    created_at: str
+
+class PostReportCreate(BaseModel):
+    """게시글 신고 요청"""
+    reason: str
+
+class PostReportRead(BaseModel):
+    """게시글 신고 응답"""
+    id: int
+    reason: str
+    status: str
+    created_at: str
+
+# ------------------------------------------------------
+# 🔔 알림 스키마
+# ------------------------------------------------------
+class NotificationRead(BaseModel):
+    """알림 조회 응답"""
+    id: int
+    sender_id: int
+    sender_name: Optional[str] = None          # 알림 보낸 사람 이름
+    sender_profile_image: Optional[str] = None # 알림 보낸 사람 프사 (선택 사항)
+    
+    type: str
+    message: str
+    related_post_id: Optional[int] = None
+    
+    is_read: bool
     created_at: str
