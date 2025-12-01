@@ -52,8 +52,8 @@ def create_comment(post_id: int, payload: CommentCreate, current_user: User = De
             user_name=display_name,
             author_profile_image=current_user.profile_image, # 🔥 프로필 이미지 추가
             created_at=comment.created_at.isoformat(),
-            like_count=0,    # 초기값 0
-            is_liked=False   # 초기값 False
+            likes_count=0,    # 초기값 0
+            liked=False   # 초기값 False
         )
 
 @router.get("/posts/{post_id}/comments", response_model=List[CommentRead])
@@ -99,8 +99,8 @@ def list_comments(
                 user_name=display_name, 
                 author_profile_image=user.profile_image, # 🔥 프로필 이미지 추가
                 created_at=comment.created_at.isoformat(),
-                like_count=like_count, # 🔥 좋아요 수
-                is_liked=is_liked      # 🔥 좋아요 여부
+                likes_count=like_count, # 🔥 좋아요 수
+                liked=is_liked      # 🔥 좋아요 여부
             ))
 
         return comments_list
@@ -147,8 +147,8 @@ def update_comment(
             user_name=display_name,
             author_profile_image=current_user.profile_image, # 🔥 프로필 이미지
             created_at=comment.created_at.isoformat(),
-            like_count=like_count,
-            is_liked=is_liked
+            likes_count=like_count,
+            liked=is_liked
         )
 
 @router.delete("/posts/{post_id}/comments/{comment_id}")

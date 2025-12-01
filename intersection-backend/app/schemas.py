@@ -106,8 +106,8 @@ class CommentRead(BaseModel):
     author_profile_image: Optional[str] = None 
     
     # 👍 [추가] 좋아요 정보
-    like_count: int = 0
-    is_liked: bool = False
+    likes_count: int = 0
+    liked: bool = False
 
 class CommentUpdate(BaseModel):
     """댓글 수정 요청"""
