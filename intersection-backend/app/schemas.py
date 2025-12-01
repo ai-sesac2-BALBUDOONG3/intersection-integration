@@ -151,6 +151,8 @@ class ChatRoomRead(BaseModel):
     last_file_name: Optional[str] = None     # 파일명
     # ✅ 친구 프로필 이미지 추가
     friend_profile_image: Optional[str] = None  # 상대방 프로필 이미지
+    # ✅ 신고 상태 추가
+    i_was_reported: bool = False  # 내가 신고당했는지 (상대방이 나를 신고함)
 
 class ChatMessageCreate(BaseModel):
     """메시지 전송 요청"""

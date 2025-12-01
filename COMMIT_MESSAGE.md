@@ -1,40 +1,47 @@
-feat: 채팅방 목록 UI 개선 - 프로필 이미지 및 마지막 메시지 미리보기
+feat: 채팅 차단/신고 기능 구현 및 에러 처리 개선
 
 ## 주요 변경사항
 
 ### 백엔드 (FastAPI)
-- 채팅방 조회 API에 추가 정보 포함
-  - 마지막 메시지 타입 (last_message_type): "normal", "image", "file"
-  - 마지막 메시지 파일 정보 (last_file_url, last_file_name)
-  - 상대방 프로필 이미지 (friend_profile_image)
-  - create_or_get_chat_room, get_my_chat_rooms 엔드포인트 모두 업데이트
+- 채팅방 생성 시 차단/신고 확인 로직 추가
+  - create_or_get_chat_room 엔드포인트에 차단/신고 체크 추가
+  - 양방향 차단 확인 (현재 사용자가 상대방을 차단했거나, 상대방이 현재 사용자를 차단한 경우)
+  - 양방향 신고 확인 (현재 사용자가 상대방을 신고했거나, 상대방이 현재 사용자를 신고한 경우)
+  - 차단/신고된 사용자와의 채팅방 생성 시 403 에러 반환
+
+- 채팅방 조회 시 신고 상태 정보 추가
+  - get_my_chat_rooms, create_or_get_chat_room에서 i_was_reported 필드 추가
+  - 상대방이 나를 신고했는지 여부를 확인하여 반환
+
+- 스키마 업데이트
+  - ChatRoomRead에 i_was_reported 필드 추가 (Optional[bool])
 
 ### 프론트엔드 (Flutter)
 - ChatRoom 모델 확장
-  - 마지막 메시지 상세 정보 필드 추가
-  - 상대방 프로필 이미지 필드 추가
-  - isLastMessageImage getter 추가 (이미지 타입 자동 감지)
+  - iWasReported 필드 추가 (상대방이 나를 신고했는지 여부)
 
-- 채팅방 목록 화면 개선
-  - 프로필 이미지 표시 (이미지가 있으면 CircleAvatar로 표시, 없으면 이니셜)
-  - 마지막 메시지가 이미지인 경우 미리보기 표시
-  - API 설정 import 추가 (이미지 URL 구성용)
+- ChatScreen 개선
+  - iWasReported 파라미터 추가
+  - 신고/차단 에러 메시지 처리 개선
+    - 이미지 전송 실패 시 차단/신고 에러 감지
+    - 사용자 친화적인 에러 메시지 표시
+    - 에러 메시지 배경색을 빨간색으로 설정하여 강조
 
-### 스키마 업데이트
-- ChatRoomRead 스키마에 선택적 필드 추가
-  - last_message_type: Optional[str]
-  - last_file_url: Optional[str]
-  - last_file_name: Optional[str]
-  - friend_profile_image: Optional[str]
+- 채팅방 목록 화면
+  - 불필요한 주석 제거 및 코드 정리
+
+### 코드 품질 개선
+- friends.py 파일 마지막 줄 개행 문자 수정
 
 ## 기술적 세부사항
-- 백엔드: FastAPI, SQLModel
+- 백엔드: FastAPI, SQLModel, SQLAlchemy or_ 조건 사용
 - 프론트엔드: Flutter
-- 이미지 URL: ApiConfig.baseUrl을 사용하여 전체 URL 구성
+- 차단/신고 확인: 양방향 체크로 안전성 강화
 
 ## 관련 파일
 - intersection-backend/app/routers/chat.py
+- intersection-backend/app/routers/friends.py
 - intersection-backend/app/schemas.py
 - intersection-frontend/lib/models/chat_room.dart
 - intersection-frontend/lib/screens/chat/chat_list_screen.dart
-
+- intersection-frontend/lib/screens/chat/chat_screen.dart

@@ -24,14 +24,16 @@ class ChatScreen extends StatefulWidget {
   final int roomId;
   final int friendId;
   final String friendName;
-  final String? friendProfileImage;  // ✅ 추가
+  final String? friendProfileImage;
+  final bool iWasReported;  // ✅ 추가
 
   const ChatScreen({
     super.key,
     required this.roomId,
     required this.friendId,
     required this.friendName,
-    this.friendProfileImage,  // ✅ 추가
+    this.friendProfileImage,
+    this.iWasReported = false,  // ✅ 추가
   });
 
   @override
@@ -148,8 +150,22 @@ class _ChatScreenState extends State<ChatScreen> {
       debugPrint("이미지 전송 오류: $e");
       if (mounted) {
         setState(() => _isUploading = false);
+        
+        // ✅ 신고/차단 에러 메시지 처리
+        String errorMessage = "이미지 전송 실패: $e";
+        if (e.toString().contains("차단된 사용자")) {
+          errorMessage = "차단된 사용자와는 채팅할 수 없습니다";
+          _checkBlockStatus();
+        } else if (e.toString().contains("신고된 사용자")) {
+          errorMessage = "신고된 사용자와는 채팅할 수 없습니다";
+          _checkReportStatus();
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("이미지 전송 실패: $e")),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -265,8 +281,22 @@ class _ChatScreenState extends State<ChatScreen> {
       debugPrint('파일 선택 오류: $e');
       if (mounted) {
         setState(() => _isUploading = false);
+        
+        // ✅ 신고/차단 에러 메시지 처리
+        String errorMessage = '파일 전송 실패: $e';
+        if (e.toString().contains("차단된 사용자")) {
+          errorMessage = "차단된 사용자와는 채팅할 수 없습니다";
+          _checkBlockStatus();
+        } else if (e.toString().contains("신고된 사용자")) {
+          errorMessage = "신고된 사용자와는 채팅할 수 없습니다";
+          _checkReportStatus();
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('파일 전송 실패: $e')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -526,8 +556,24 @@ class _ChatScreenState extends State<ChatScreen> {
       debugPrint("메시지 전송 오류: $e");
       if (mounted) {
         setState(() => _isSending = false);
+        
+        // ✅ 신고/차단 에러 메시지 처리
+        String errorMessage = "메시지 전송 실패: $e";
+        if (e.toString().contains("차단된 사용자")) {
+          errorMessage = "차단된 사용자와는 채팅할 수 없습니다";
+          // 차단 상태 다시 확인
+          _checkBlockStatus();
+        } else if (e.toString().contains("신고된 사용자")) {
+          errorMessage = "신고된 사용자와는 채팅할 수 없습니다";
+          // 신고 상태 다시 확인
+          _checkReportStatus();
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("메시지 전송 실패: $e")),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
         _messageController.text = content;
       }
@@ -807,7 +853,7 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                if (!_isBlocked && !_iReportedThem)
+                if (!_isBlocked && !_iReportedThem && !widget.iWasReported)  // ✅ iWasReported 추가
                   IconButton(
                     icon: Icon(
                       _showEmojiPicker 
@@ -824,7 +870,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       }
                     },
                   ),
-                if (!_isBlocked && !_iReportedThem)
+                if (!_isBlocked && !_iReportedThem && !widget.iWasReported)  // ✅ iWasReported 추가
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline, color: Colors.blue),
                     onPressed: _isUploading ? null : _showAttachmentOptions,
@@ -832,13 +878,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    enabled: !_isBlocked && !_iReportedThem && !_isUploading,
+                    enabled: !_isBlocked && !_iReportedThem && !_isUploading && !widget.iWasReported,  // ✅ iWasReported 추가
                     decoration: InputDecoration(
                       hintText: _isUploading
                           ? "파일 업로드 중..."
-                          : (_isBlocked || _iReportedThem)
-                              ? "메시지를 보낼 수 없습니다"
-                              : "메시지를 입력하세요...",
+                          : widget.iWasReported
+                              ? "신고당하여 메시지를 보낼 수 없습니다"  // ✅ 추가
+                              : (_isBlocked || _iReportedThem)
+                                  ? "메시지를 보낼 수 없습니다"
+                                  : "메시지를 입력하세요...",
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide(color: Colors.grey.shade300),
@@ -874,12 +922,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(width: 12),
                 GestureDetector(
-                  onTap: _isSending || _isBlocked || _iReportedThem || _isUploading ? null : _sendMessage,
+                  onTap: _isSending || _isBlocked || _iReportedThem || _isUploading || widget.iWasReported ? null : _sendMessage,  // ✅ iWasReported 추가
                   child: Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: _isSending || _isBlocked || _iReportedThem || _isUploading ? Colors.grey : Colors.blue,
+                      color: _isSending || _isBlocked || _iReportedThem || _isUploading || widget.iWasReported ? Colors.grey : Colors.blue,  // ✅ iWasReported 추가
                       shape: BoxShape.circle,
                     ),
                     child: _isSending || _isUploading
