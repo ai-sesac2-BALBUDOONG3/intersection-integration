@@ -2,20 +2,23 @@ class ChatRoom {
   final int id;
   final int user1Id;
   final int user2Id;
-  final int friendId;        // 상대방 ID
-  final String? friendName;  // 상대방 이름
+  final int friendId;
+  final String? friendName;
   final String? lastMessage;
   final String? lastMessageTime;
   final int unreadCount;
   final String createdAt;
   
   // ✅ 마지막 메시지 상세 정보
-  final String? lastMessageType;  // "normal", "image", "file"
-  final String? lastFileUrl;      // 이미지/파일 URL
-  final String? lastFileName;     // 파일명
+  final String? lastMessageType;
+  final String? lastFileUrl;
+  final String? lastFileName;
   
-  // ✅ 상대방 프로필 이미지 추가
-  final String? friendProfileImage;  // 상대방 프로필 이미지
+  // ✅ 상대방 프로필 이미지
+  final String? friendProfileImage;
+  
+  // ✅ 신고 상태
+  final bool iWasReported;  // 내가 신고당했는지 (상대방이 나를 신고함)
 
   ChatRoom({
     required this.id,
@@ -30,8 +33,8 @@ class ChatRoom {
     this.lastMessageType,
     this.lastFileUrl,
     this.lastFileName,
-    // ✅ 추가
     this.friendProfileImage,
+    this.iWasReported = false,  // ✅ 추가
   });
 
   // ✅ 마지막 메시지가 이미지인지 확인
@@ -73,8 +76,8 @@ class ChatRoom {
       lastMessageType: json['last_message_type'],
       lastFileUrl: json['last_file_url'],
       lastFileName: json['last_file_name'],
-      // ✅ 추가
       friendProfileImage: json['friend_profile_image'],
+      iWasReported: json['i_was_reported'] ?? false,  // ✅ 추가
     );
   }
 
@@ -92,8 +95,8 @@ class ChatRoom {
       'last_message_type': lastMessageType,
       'last_file_url': lastFileUrl,
       'last_file_name': lastFileName,
-      // ✅ 추가
       'friend_profile_image': friendProfileImage,
+      'i_was_reported': iWasReported,  // ✅ 추가
     };
   }
 }

@@ -141,9 +141,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      // ========================================
-      // ✅ 프로필 이미지 표시
-      // ========================================
       leading: room.friendProfileImage != null
           ? CircleAvatar(
               radius: 28,
@@ -188,9 +185,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
       subtitle: Row(
         children: [
-          // ========================================
-          // ✅ 이미지 썸네일 추가
-          // ========================================
           if (room.isLastMessageImage && room.lastFileUrl != null) ...[
             Container(
               margin: const EdgeInsets.only(right: 8, top: 4),
@@ -258,7 +252,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
               roomId: room.id,
               friendId: room.friendId,
               friendName: room.friendName ?? "Unknown",
-              friendProfileImage: room.friendProfileImage,  // ✅ 추가
+              friendProfileImage: room.friendProfileImage,
+              iWasReported: room.iWasReported,  // ✅ 추가
             ),
           ),
         ).then((_) => _loadChatRooms());
