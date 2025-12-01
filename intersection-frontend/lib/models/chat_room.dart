@@ -17,8 +17,9 @@ class ChatRoom {
   // ✅ 상대방 프로필 이미지
   final String? friendProfileImage;
   
-  // ✅ 신고 상태
-  final bool iWasReported;  // 내가 신고당했는지 (상대방이 나를 신고함)
+  // ✅ 신고/차단 상태 (통합)
+  final bool iReportedThem;  // 내가 상대방을 신고/차단함
+  final bool theyBlockedMe;  // 상대방이 나를 신고/차단함
 
   ChatRoom({
     required this.id,
@@ -34,7 +35,8 @@ class ChatRoom {
     this.lastFileUrl,
     this.lastFileName,
     this.friendProfileImage,
-    this.iWasReported = false,  // ✅ 추가
+    this.iReportedThem = false,  // ✅ 통합
+    this.theyBlockedMe = false,  // ✅ 통합
   });
 
   // ✅ 마지막 메시지가 이미지인지 확인
@@ -77,7 +79,8 @@ class ChatRoom {
       lastFileUrl: json['last_file_url'],
       lastFileName: json['last_file_name'],
       friendProfileImage: json['friend_profile_image'],
-      iWasReported: json['i_was_reported'] ?? false,  // ✅ 추가
+      iReportedThem: json['i_reported_them'] ?? false,  // ✅ 통합
+      theyBlockedMe: json['they_blocked_me'] ?? false,  // ✅ 통합
     );
   }
 
@@ -96,7 +99,8 @@ class ChatRoom {
       'last_file_url': lastFileUrl,
       'last_file_name': lastFileName,
       'friend_profile_image': friendProfileImage,
-      'i_was_reported': iWasReported,  // ✅ 추가
+      'i_reported_them': iReportedThem,  // ✅ 통합
+      'they_blocked_me': theyBlockedMe,  // ✅ 통합
     };
   }
 }

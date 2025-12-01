@@ -130,12 +130,40 @@ def create_or_get_chat_room(
         )
         unread_count = len(session.exec(unread_statement).all())
         
-        # ✅ 내가 신고당했는지 확인 (상대방이 나를 신고함)
-        i_was_reported_statement = select(UserReport).where(
+        # ========================================
+        # ✅ 신고/차단 상태 확인 (통합)
+        # ========================================
+        # 1. 내가 상대방을 신고/차단했는지 (i_reported_them = i_blocked_them)
+        i_reported_statement = select(UserReport).where(
+            UserReport.reporter_id == current_user_id,
+            UserReport.reported_user_id == friend_id
+        )
+        i_reported_them = session.exec(i_reported_statement).first() is not None
+        
+        i_blocked_statement = select(UserBlock).where(
+            UserBlock.user_id == current_user_id,
+            UserBlock.blocked_user_id == friend_id
+        )
+        i_blocked_them = session.exec(i_blocked_statement).first() is not None
+        
+        # 신고 또는 차단 중 하나라도 했으면 True
+        i_reported_or_blocked = i_reported_them or i_blocked_them
+        
+        # 2. 상대방이 나를 신고/차단했는지 (they_blocked_me = they_reported_me)
+        they_reported_statement = select(UserReport).where(
             UserReport.reporter_id == friend_id,
             UserReport.reported_user_id == current_user_id
         )
-        i_was_reported = session.exec(i_was_reported_statement).first() is not None
+        they_reported_me = session.exec(they_reported_statement).first() is not None
+        
+        they_blocked_statement = select(UserBlock).where(
+            UserBlock.user_id == friend_id,
+            UserBlock.blocked_user_id == current_user_id
+        )
+        they_blocked_me_real = session.exec(they_blocked_statement).first() is not None
+        
+        # 신고 또는 차단 중 하나라도 당했으면 True
+        they_blocked_or_reported = they_reported_me or they_blocked_me_real
         
         return ChatRoomRead(
             id=room.id,
@@ -153,8 +181,9 @@ def create_or_get_chat_room(
             last_file_name=last_message.file_name if last_message else None,
             # ✅ 친구 프로필 이미지 추가
             friend_profile_image=friend_profile_image,
-            # ✅ 신고 상태 추가
-            i_was_reported=i_was_reported
+            # ✅ 신고/차단 상태 추가 (통합)
+            i_reported_them=i_reported_or_blocked,
+            they_blocked_me=they_blocked_or_reported
         )
 
 
@@ -204,12 +233,38 @@ def get_my_chat_rooms(current_user_id: int = Depends(get_current_user_id)):
             )
             unread_count = len(session.exec(unread_statement).all())
             
-            # ✅ 내가 신고당했는지 확인 (상대방이 나를 신고함)
-            i_was_reported_statement = select(UserReport).where(
+            # ========================================
+            # ✅ 신고/차단 상태 확인 (통합)
+            # ========================================
+            # 1. 내가 상대방을 신고/차단했는지
+            i_reported_statement = select(UserReport).where(
+                UserReport.reporter_id == current_user_id,
+                UserReport.reported_user_id == friend_id
+            )
+            i_reported_them = session.exec(i_reported_statement).first() is not None
+            
+            i_blocked_statement = select(UserBlock).where(
+                UserBlock.user_id == current_user_id,
+                UserBlock.blocked_user_id == friend_id
+            )
+            i_blocked_them = session.exec(i_blocked_statement).first() is not None
+            
+            i_reported_or_blocked = i_reported_them or i_blocked_them
+            
+            # 2. 상대방이 나를 신고/차단했는지
+            they_reported_statement = select(UserReport).where(
                 UserReport.reporter_id == friend_id,
                 UserReport.reported_user_id == current_user_id
             )
-            i_was_reported = session.exec(i_was_reported_statement).first() is not None
+            they_reported_me = session.exec(they_reported_statement).first() is not None
+            
+            they_blocked_statement = select(UserBlock).where(
+                UserBlock.user_id == friend_id,
+                UserBlock.blocked_user_id == current_user_id
+            )
+            they_blocked_me_real = session.exec(they_blocked_statement).first() is not None
+            
+            they_blocked_or_reported = they_reported_me or they_blocked_me_real
             
             result.append(ChatRoomRead(
                 id=room.id,
@@ -227,8 +282,9 @@ def get_my_chat_rooms(current_user_id: int = Depends(get_current_user_id)):
                 last_file_name=last_message.file_name if last_message else None,
                 # ✅ 친구 프로필 이미지 추가
                 friend_profile_image=friend_profile_image,
-                # ✅ 신고 상태 추가
-                i_was_reported=i_was_reported
+                # ✅ 신고/차단 상태 추가 (통합)
+                i_reported_them=i_reported_or_blocked,
+                they_blocked_me=they_blocked_or_reported
             ))
         
         return result

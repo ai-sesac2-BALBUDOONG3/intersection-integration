@@ -25,7 +25,8 @@ class ChatScreen extends StatefulWidget {
   final int friendId;
   final String friendName;
   final String? friendProfileImage;
-  final bool iWasReported;  // ✅ 추가
+  final bool iReportedThem;  // ✅ 통합: 내가 신고/차단함
+  final bool theyBlockedMe;  // ✅ 통합: 상대방이 나를 신고/차단함
 
   const ChatScreen({
     super.key,
@@ -33,7 +34,8 @@ class ChatScreen extends StatefulWidget {
     required this.friendId,
     required this.friendName,
     this.friendProfileImage,
-    this.iWasReported = false,  // ✅ 추가
+    this.iReportedThem = false,  // ✅ 통합
+    this.theyBlockedMe = false,  // ✅ 통합
   });
 
   @override
@@ -531,7 +533,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    if (_isBlocked || _iReportedThem) {
+    if (widget.iReportedThem || widget.theyBlockedMe) {  // ✅ 통합
       _showBlockedDialog();
       return;
     }
@@ -594,12 +596,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _showBlockedDialog() {
     String message;
-    if (_iReportedThem) {
-      message = "신고한 사용자에게는 메시지를 보낼 수 없습니다.\n신고를 취소하려면 메뉴에서 신고 취소를 선택해주세요.";
-    } else if (_iBlockedThem) {
-      message = "차단한 사용자에게는 메시지를 보낼 수 없습니다.\n차단을 해제하려면 프로필 설정에서 해제해주세요.";
-    } else if (_theyBlockedMe) {
-      message = "상대방이 회원님을 차단하여 메시지를 보낼 수 없습니다.";
+    if (widget.iReportedThem) {
+      // ✅ 통합: 내가 신고/차단함
+      message = "신고 또는 차단한 사용자에게는 메시지를 보낼 수 없습니다.";
+    } else if (widget.theyBlockedMe) {
+      // ✅ 통합: 상대방이 나를 신고/차단함  
+      message = "상대방이 회원님을 신고 또는 차단하여 메시지를 보낼 수 없습니다.";
     } else {
       message = "이 사용자와 메시지를 주고받을 수 없습니다.";
     }
@@ -678,50 +680,53 @@ class _ChatScreenState extends State<ChatScreen> {
               }
             },
             itemBuilder: (context) => [
-              if (!_theyBlockedMe && !_iBlockedThem && !_iReportedThem)
-                const PopupMenuItem(
-                  value: 'block',
-                  child: Row(
-                    children: [
-                      Icon(Icons.block, size: 20, color: Colors.red),
-                      SizedBox(width: 12),
-                      Text('차단하기'),
-                    ],
+              // ✅ 신고당한 경우: 나가기만 가능
+              if (!widget.theyBlockedMe) ...[
+                if (!_theyBlockedMe && !_iBlockedThem && !_iReportedThem)
+                  const PopupMenuItem(
+                    value: 'block',
+                    child: Row(
+                      children: [
+                        Icon(Icons.block, size: 20, color: Colors.red),
+                        SizedBox(width: 12),
+                        Text('차단하기'),
+                      ],
+                    ),
                   ),
-                ),
-              if (_iBlockedThem)
-                const PopupMenuItem(
-                  value: 'unblock',
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle, size: 20, color: Colors.green),
-                      SizedBox(width: 12),
-                      Text('차단 해제'),
-                    ],
+                if (_iBlockedThem)
+                  const PopupMenuItem(
+                    value: 'unblock',
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, size: 20, color: Colors.green),
+                        SizedBox(width: 12),
+                        Text('차단 해제'),
+                      ],
+                    ),
                   ),
-                ),
-              if (!_theyBlockedMe && !_iReportedThem && !_iBlockedThem)
-                const PopupMenuItem(
-                  value: 'report',
-                  child: Row(
-                    children: [
-                      Icon(Icons.report, size: 20, color: Colors.orange),
-                      SizedBox(width: 12),
-                      Text('신고하기'),
-                    ],
+                if (!_theyBlockedMe && !_iReportedThem && !_iBlockedThem)
+                  const PopupMenuItem(
+                    value: 'report',
+                    child: Row(
+                      children: [
+                        Icon(Icons.report, size: 20, color: Colors.orange),
+                        SizedBox(width: 12),
+                        Text('신고하기'),
+                      ],
+                    ),
                   ),
-                ),
-              if (_iReportedThem)
-                const PopupMenuItem(
-                  value: 'unreport',
-                  child: Row(
-                    children: [
-                      Icon(Icons.undo, size: 20, color: Colors.blue),
-                      SizedBox(width: 12),
-                      Text('신고 취소'),
-                    ],
+                if (_iReportedThem)
+                  const PopupMenuItem(
+                    value: 'unreport',
+                    child: Row(
+                      children: [
+                        Icon(Icons.undo, size: 20, color: Colors.blue),
+                        SizedBox(width: 12),
+                        Text('신고 취소'),
+                      ],
+                    ),
                   ),
-                ),
+              ],
               const PopupMenuItem(
                 value: 'leave',
                 child: Row(
@@ -738,28 +743,53 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          if (_isBlocked || _iReportedThem)
+          // ✅ 내가 신고/차단했을 때 배너
+          if (widget.iReportedThem)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
-              color: _iReportedThem ? Colors.orange.shade50 : Colors.red.shade50,
+              color: Colors.orange.shade50,
               child: Row(
                 children: [
                   Icon(
-                    _iReportedThem ? Icons.report : Icons.block,
-                    color: _iReportedThem ? Colors.orange.shade700 : Colors.red.shade700,
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange.shade700,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _iReportedThem
-                          ? "신고한 사용자입니다. 메시지를 보낼 수 없습니다."
-                          : _iBlockedThem
-                              ? "차단한 사용자입니다. 메시지를 보낼 수 없습니다."
-                              : "상대방이 회원님을 차단하여 메시지를 보낼 수 없습니다.",
+                      "신고 또는 차단한 사용자입니다. 메시지를 보낼 수 없습니다.",
                       style: TextStyle(
-                        color: _iReportedThem ? Colors.orange.shade700 : Colors.red.shade700,
+                        color: Colors.orange.shade700,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          
+          // ✅ 신고/차단 당했을 때 배너
+          if (widget.theyBlockedMe)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.red.shade50,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: Colors.red.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "상대방이 회원님을 신고 또는 차단하여 메시지를 보낼 수 없습니다. 채팅방을 나가주세요.",
+                      style: TextStyle(
+                        color: Colors.red.shade700,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -853,7 +883,7 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                if (!_isBlocked && !_iReportedThem && !widget.iWasReported)  // ✅ iWasReported 추가
+                if (!widget.iReportedThem && !widget.theyBlockedMe)  // ✅ iWasReported 추가
                   IconButton(
                     icon: Icon(
                       _showEmojiPicker 
@@ -870,7 +900,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       }
                     },
                   ),
-                if (!_isBlocked && !_iReportedThem && !widget.iWasReported)  // ✅ iWasReported 추가
+                if (!widget.iReportedThem && !widget.theyBlockedMe)  // ✅ iWasReported 추가
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline, color: Colors.blue),
                     onPressed: _isUploading ? null : _showAttachmentOptions,
@@ -878,15 +908,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    enabled: !_isBlocked && !_iReportedThem && !_isUploading && !widget.iWasReported,  // ✅ iWasReported 추가
+                    enabled: !widget.iReportedThem && !widget.theyBlockedMe && !_isUploading,  // ✅ 통합
                     decoration: InputDecoration(
                       hintText: _isUploading
                           ? "파일 업로드 중..."
-                          : widget.iWasReported
-                              ? "신고당하여 메시지를 보낼 수 없습니다"  // ✅ 추가
-                              : (_isBlocked || _iReportedThem)
-                                  ? "메시지를 보낼 수 없습니다"
-                                  : "메시지를 입력하세요...",
+                          : (widget.iReportedThem || widget.theyBlockedMe)
+                              ? "메시지를 보낼 수 없습니다"  // ✅ 통합
+                              : "메시지를 입력하세요...",
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide(color: Colors.grey.shade300),
@@ -922,12 +950,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(width: 12),
                 GestureDetector(
-                  onTap: _isSending || _isBlocked || _iReportedThem || _isUploading || widget.iWasReported ? null : _sendMessage,  // ✅ iWasReported 추가
+                  onTap: _isSending || widget.iReportedThem || widget.theyBlockedMe || _isUploading ? null : _sendMessage,  // ✅ 통합
                   child: Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: _isSending || _isBlocked || _iReportedThem || _isUploading || widget.iWasReported ? Colors.grey : Colors.blue,  // ✅ iWasReported 추가
+                      color: _isSending || widget.iReportedThem || widget.theyBlockedMe || _isUploading ? Colors.grey : Colors.blue,  // ✅ 통합
                       shape: BoxShape.circle,
                     ),
                     child: _isSending || _isUploading
