@@ -24,12 +24,14 @@ class ChatScreen extends StatefulWidget {
   final int roomId;
   final int friendId;
   final String friendName;
+  final String? friendProfileImage;  // ✅ 추가
 
   const ChatScreen({
     super.key,
     required this.roomId,
     required this.friendId,
     required this.friendName,
+    this.friendProfileImage,  // ✅ 추가
   });
 
   @override
@@ -584,18 +586,29 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.blue.shade100,
-              child: Text(
-                widget.friendName.substring(0, 1),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade700,
-                ),
-              ),
-            ),
+            // ========================================
+            // ✅ 프로필 이미지 표시
+            // ========================================
+            widget.friendProfileImage != null
+                ? CircleAvatar(
+                    radius: 18,
+                    backgroundImage: NetworkImage(
+                      "${ApiConfig.baseUrl}${widget.friendProfileImage}",
+                    ),
+                    onBackgroundImageError: (_, __) {},
+                  )
+                : CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.blue.shade100,
+                    child: Text(
+                      widget.friendName.substring(0, 1),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                  ),
             const SizedBox(width: 12),
             Text(widget.friendName),
           ],

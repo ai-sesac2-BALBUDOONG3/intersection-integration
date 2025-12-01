@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/chat_room.dart';
 import '../../services/api_service.dart';
 import '../../data/app_state.dart';
+import '../../config/api_config.dart';
 import 'chat_screen.dart';
 import 'dart:async';
 
@@ -21,7 +22,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
   void initState() {
     super.initState();
     _loadChatRooms();
-    // 3초마다 채팅방 목록 업데이트 (실시간 업데이트)
     _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       _loadChatRooms(showLoading: false);
     });
@@ -116,7 +116,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Widget _buildChatRoomTile(ChatRoom room) {
-    // 시간 포맷팅
     String timeText = "";
     if (room.lastMessageTime != null) {
       try {
@@ -142,18 +141,30 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: CircleAvatar(
-        radius: 28,
-        backgroundColor: Colors.blue.shade100,
-        child: Text(
-          room.friendName?.substring(0, 1) ?? "?",
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue.shade700,
-          ),
-        ),
-      ),
+      // ========================================
+      // ✅ 프로필 이미지 표시
+      // ========================================
+      leading: room.friendProfileImage != null
+          ? CircleAvatar(
+              radius: 28,
+              backgroundImage: NetworkImage(
+                "${ApiConfig.baseUrl}${room.friendProfileImage}",
+              ),
+              onBackgroundImageError: (_, __) {},
+              child: null,
+            )
+          : CircleAvatar(
+              radius: 28,
+              backgroundColor: Colors.blue.shade100,
+              child: Text(
+                room.friendName?.substring(0, 1) ?? "?",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade700,
+                ),
+              ),
+            ),
       title: Row(
         children: [
           Expanded(
@@ -177,6 +188,33 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
       subtitle: Row(
         children: [
+          // ========================================
+          // ✅ 이미지 썸네일 추가
+          // ========================================
+          if (room.isLastMessageImage && room.lastFileUrl != null) ...[
+            Container(
+              margin: const EdgeInsets.only(right: 8, top: 4),
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Image.network(
+                  "${ApiConfig.baseUrl}${room.lastFileUrl}",
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Icon(
+                    Icons.image,
+                    size: 20,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          
           Expanded(
             child: Text(
               room.lastMessage ?? "메시지가 없습니다",
@@ -220,9 +258,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
               roomId: room.id,
               friendId: room.friendId,
               friendName: room.friendName ?? "Unknown",
+              friendProfileImage: room.friendProfileImage,  // ✅ 추가
             ),
           ),
-        ).then((_) => _loadChatRooms()); // 채팅 화면에서 돌아오면 새로고침
+        ).then((_) => _loadChatRooms());
       },
     );
   }

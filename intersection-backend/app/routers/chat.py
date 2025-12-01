@@ -87,6 +87,7 @@ def create_or_get_chat_room(
         # 상대방 정보 조회
         friend = session.get(User, friend_id)
         friend_name = friend.name if friend else "Unknown"
+        friend_profile_image = friend.profile_image if friend else None  # ✅ 프로필 이미지 추가
         
         # 마지막 메시지 조회
         last_msg_statement = select(ChatMessage).where(
@@ -111,7 +112,13 @@ def create_or_get_chat_room(
             last_message=last_message.content if last_message else None,
             last_message_time=last_message.created_at.isoformat() if last_message else None,
             unread_count=unread_count,
-            created_at=room.created_at.isoformat()
+            created_at=room.created_at.isoformat(),
+            # ✅ 마지막 메시지 상세 정보 추가
+            last_message_type=last_message.message_type if last_message else None,
+            last_file_url=last_message.file_url if last_message else None,
+            last_file_name=last_message.file_name if last_message else None,
+            # ✅ 친구 프로필 이미지 추가
+            friend_profile_image=friend_profile_image
         )
 
 
@@ -145,6 +152,7 @@ def get_my_chat_rooms(current_user_id: int = Depends(get_current_user_id)):
             friend_id = room.user2_id if room.user1_id == current_user_id else room.user1_id
             friend = session.get(User, friend_id)
             friend_name = friend.name if friend else "Unknown"
+            friend_profile_image = friend.profile_image if friend else None  # ✅ 프로필 이미지 추가
             
             # 마지막 메시지 조회
             last_msg_statement = select(ChatMessage).where(
@@ -169,7 +177,13 @@ def get_my_chat_rooms(current_user_id: int = Depends(get_current_user_id)):
                 last_message=last_message.content if last_message else None,
                 last_message_time=last_message.created_at.isoformat() if last_message else None,
                 unread_count=unread_count,
-                created_at=room.created_at.isoformat()
+                created_at=room.created_at.isoformat(),
+                # ✅ 마지막 메시지 상세 정보 추가
+                last_message_type=last_message.message_type if last_message else None,
+                last_file_url=last_message.file_url if last_message else None,
+                last_file_name=last_message.file_name if last_message else None,
+                # ✅ 친구 프로필 이미지 추가
+                friend_profile_image=friend_profile_image
             ))
         
         return result
