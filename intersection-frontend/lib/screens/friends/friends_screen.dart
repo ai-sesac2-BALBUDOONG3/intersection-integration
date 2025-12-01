@@ -5,7 +5,10 @@ import 'package:intersection/screens/chat/chat_screen.dart';
 import 'package:intersection/screens/friends/friend_profile_screen.dart';
 import 'package:intersection/screens/profile/profile_screen.dart';
 import 'package:intersection/services/api_service.dart';
+import 'package:intersection/config/api_config.dart';
+import 'dart:typed_data';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -22,8 +25,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
   void initState() {
     super.initState();
     _loadFriends();
-
-    // 🔥 프로필 변경 감지 → 자동 setState
     AppState.addListener(_refreshOnProfileUpdate);
   }
 
@@ -33,7 +34,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
     super.dispose();
   }
 
-  /// 🔥 프로필 업데이트 신호 받으면 전체 갱신
   void _refreshOnProfileUpdate() {
     if (mounted) setState(() {});
   }
@@ -46,7 +46,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
     try {
       final friends = await ApiService.getFriends();
-
       setState(() {
         AppState.friends = friends;
         _isLoading = false;
@@ -54,6 +53,43 @@ class _FriendsScreenState extends State<FriendsScreen> {
     } catch (e) {
       debugPrint("친구 목록 불러오기 오류: $e");
       setState(() => _isLoading = false);
+    }
+  }
+
+  // ============================================================
+  // 🔥 통합 이미지 Provider (웹/앱/상대경로/bytes 모두 처리)
+  // ============================================================
+  ImageProvider buildImageProvider(String? url, Uint8List? bytes) {
+    try {
+      // 1) bytes 우선
+      if (bytes != null) {
+        return MemoryImage(bytes);
+      }
+
+      // 2) url 없으면 기본 아이콘
+      if (url == null || url.isEmpty) {
+        return const AssetImage("assets/images/logo.png");
+      }
+
+      // 3) 이미 절대 URL
+      if (url.startsWith("http")) {
+        return NetworkImage(url);
+      }
+
+      // 4) /uploads/... → 서버 주소 붙이기
+      if (url.startsWith("/")) {
+        return NetworkImage("${ApiConfig.baseUrl}$url");
+      }
+
+      // 5) 앱이면 FileImage
+      if (!kIsWeb && File(url).existsSync()) {
+        return FileImage(File(url));
+      }
+
+      // 6) 그래도 안 되면 server 경로로 시도
+      return NetworkImage("${ApiConfig.baseUrl}/$url");
+    } catch (_) {
+      return const AssetImage("assets/images/logo.png");
     }
   }
 
@@ -124,13 +160,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
         children: [
           CircleAvatar(
             radius: 32,
-            backgroundImage: user.profileImageBytes != null
-                ? MemoryImage(user.profileImageBytes!)
-                : (user.profileImageUrl != null
-                    ? FileImage(File(user.profileImageUrl!))
-                    : null) as ImageProvider?,
-            child: (user.profileImageBytes == null &&
-                    user.profileImageUrl == null)
+            backgroundImage:
+                buildImageProvider(user.profileImageUrl, user.profileImageBytes),
+            child: (user.profileImageUrl == null &&
+                    user.profileImageBytes == null)
                 ? const Icon(Icons.person, size: 34)
                 : null,
           ),
@@ -159,7 +192,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ),
           ),
 
-          // 🔥 내 프로필 화면 이동 버튼
           IconButton(
             icon: const Icon(Icons.edit, size: 20),
             onPressed: () {
@@ -190,13 +222,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
         children: [
           CircleAvatar(
             radius: 30,
-            backgroundImage: user.profileImageBytes != null
-                ? MemoryImage(user.profileImageBytes!)
-                : (user.profileImageUrl != null
-                    ? FileImage(File(user.profileImageUrl!))
-                    : null) as ImageProvider?,
-            child: (user.profileImageBytes == null &&
-                    user.profileImageUrl == null)
+            backgroundImage:
+                buildImageProvider(user.profileImageUrl, user.profileImageBytes),
+            child: (user.profileImageUrl == null &&
+                    user.profileImageBytes == null)
                 ? const Icon(Icons.person, size: 30)
                 : null,
           ),

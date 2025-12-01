@@ -72,59 +72,6 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
   }
-
-  // ----------------------------------------------------
-  // Kakao - development helper flow
-  // ----------------------------------------------------
-  Future<void> _kakaoDevLogin() async {
-    setState(() => _isLoading = true);
-    try {
-      final token = await ApiService.kakaoDevLogin();
-      AppState.token = token;
-
-      try {
-        final user = await ApiService.getMyInfo();
-
-        // ⭐ await 추가
-        await AppState.login(token, user);
-
-        if (!mounted) return;
-        setState(() => _isLoading = false);
-
-        final needsProfile =
-            user.birthYear == 0 || user.region.isEmpty || user.school.isEmpty;
-
-        if (needsProfile) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const SignupScreen()),
-            (route) => false,
-          );
-        } else {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const MainTabScreen(initialIndex: 1)),
-            (route) => false,
-          );
-        }
-      } catch (e) {
-        if (!mounted) return;
-        setState(() => _isLoading = false);
-
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const SignupScreen()),
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("카카오 로그인 실패: $e")));
-    }
-  }
-
   // ----------------------------------------------------
   // Kakao OAuth flow (flutter_web_auth)
   // ----------------------------------------------------
@@ -257,16 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     : const Text("카카오로 로그인"),
               ),
             ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.tonal(
-                onPressed: _isLoading ? null : _kakaoDevLogin,
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.black)
-                    : const Text("카카오로 로그인 (개발용)"),
-              ),
-            ),
+            
             const SizedBox(height: 14),
             TextButton(
               onPressed: () {
