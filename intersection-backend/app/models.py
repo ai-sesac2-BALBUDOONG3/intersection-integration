@@ -10,11 +10,11 @@ def get_kst_now():
     return datetime.now(KST)
 
 # ------------------------------------------------------
-# 1. Community (커뮤니티) 모델 추가
+# 1. Community (커뮤니티) 모델
 # ------------------------------------------------------
 class Community(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str  # 커뮤니티 이름 (예: "서울신동초등학교 2010년 입학")
+    name: str  # 커뮤니티 이름
     
     # 교집합 조건들
     school_name: str
@@ -23,12 +23,12 @@ class Community(SQLModel, table=True):
 
     created_at: datetime = Field(default_factory=get_kst_now)
 
-    # 이 커뮤니티에 속한 유저들 (User 모델과 연결)
+    # Relationship
     users: List["User"] = Relationship(back_populates="community")
 
 
 # ------------------------------------------------------
-# 2. User (사용자) 모델 수정
+# 2. User (사용자) 모델
 # ------------------------------------------------------
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -41,34 +41,40 @@ class User(SQLModel, table=True):
     
     birth_year: Optional[int] = None
     gender: Optional[str] = None
-    region: Optional[str] = None        # 지역
-    school_name: Optional[str] = None   # 학교명
+    region: Optional[str] = None
+    school_name: Optional[str] = None
     school_type: Optional[str] = None
-    admission_year: Optional[int] = None # 입학년도
+    admission_year: Optional[int] = None
 
-    # 📷 [추가됨] 프로필 이미지 & 배경 이미지 URL
+    # 프로필 이미지 & 배경 이미지 URL
     profile_image: Optional[str] = None      
     background_image: Optional[str] = None
 
-    # 🔥 새로 추가된 부분: 커뮤니티 ID와 관계 설정
+    # 커뮤니티 관계
     community_id: Optional[int] = Field(default=None, foreign_key="community.id")
     community: Optional[Community] = Relationship(back_populates="users")
 
     created_at: datetime = Field(default_factory=get_kst_now)
 
 
-# (나머지 Post, Comment 등 기존 코드는 그대로 두시면 됩니다)
+# ------------------------------------------------------
+# 3. Post (게시글) 모델
+# ------------------------------------------------------
 class Post(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     author_id: int = Field(foreign_key="user.id")
     content: str
 
-    # 📷 [추가됨] 게시글 이미지 URL (여러 장이면 쉼표로 구분하거나 별도 테이블 필요하지만, 일단 1장으로 시작)
+    # 게시글 이미지 URL
     image_url: Optional[str] = None
 
     created_at: datetime = Field(default_factory=get_kst_now)
     updated_at: Optional[datetime] = None
 
+
+# ------------------------------------------------------
+# 4. Comment (댓글) 모델
+# ------------------------------------------------------
 class Comment(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     post_id: int = Field(foreign_key="post.id")
@@ -76,6 +82,10 @@ class Comment(SQLModel, table=True):
     content: str
     created_at: datetime = Field(default_factory=get_kst_now)
 
+
+# ------------------------------------------------------
+# 5. UserFriendship (친구 관계) 모델
+# ------------------------------------------------------
 class UserFriendship(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
@@ -90,11 +100,11 @@ class UserFriendship(SQLModel, table=True):
 class ChatRoom(SQLModel, table=True):
     """1:1 채팅방 모델"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    user1_id: int = Field(foreign_key="user.id")  # 채팅방 생성자
-    user2_id: int = Field(foreign_key="user.id")  # 채팅 상대방
-    left_user_id: Optional[int] = Field(default=None, foreign_key="user.id")  # 나간 사용자 (있으면 해당 사용자는 채팅방에서 제외)
+    user1_id: int = Field(foreign_key="user.id")
+    user2_id: int = Field(foreign_key="user.id")
+    left_user_id: Optional[int] = Field(default=None, foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_kst_now)
-    updated_at: datetime = Field(default_factory=get_kst_now)  # 마지막 메시지 시간
+    updated_at: datetime = Field(default_factory=get_kst_now)
 
 
 class ChatMessage(SQLModel, table=True):
@@ -102,15 +112,15 @@ class ChatMessage(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     room_id: int = Field(foreign_key="chatroom.id")
     sender_id: int = Field(foreign_key="user.id")
-    content: str  # 메시지 내용
+    content: str
     message_type: str = Field(default="normal")  # normal, system, file, image
-    is_read: bool = Field(default=False)  # 읽음 여부
+    is_read: bool = Field(default=False)
     
-    # ✅ 파일 업로드 관련 필드 추가 (4개)
-    file_url: Optional[str] = None  # 파일 URL
-    file_name: Optional[str] = None  # 원본 파일명
-    file_size: Optional[int] = None  # 파일 크기 (bytes)
-    file_type: Optional[str] = None  # 파일 MIME 타입 (image/jpeg, application/pdf 등)
+    # 파일 업로드 관련 필드
+    file_url: Optional[str] = None
+    file_name: Optional[str] = None
+    file_size: Optional[int] = None
+    file_type: Optional[str] = None
     
     created_at: datetime = Field(default_factory=get_kst_now)
 
@@ -121,17 +131,83 @@ class ChatMessage(SQLModel, table=True):
 class UserBlock(SQLModel, table=True):
     """사용자 차단 모델"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id")  # 차단한 사람
-    blocked_user_id: int = Field(foreign_key="user.id")  # 차단된 사람
+    user_id: int = Field(foreign_key="user.id")
+    blocked_user_id: int = Field(foreign_key="user.id")
     created_at: datetime = Field(default_factory=get_kst_now)
 
 
 class UserReport(SQLModel, table=True):
     """사용자 신고 모델"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    reporter_id: int = Field(foreign_key="user.id")  # 신고한 사람
-    reported_user_id: int = Field(foreign_key="user.id")  # 신고된 사람
-    reason: str  # 신고 사유
-    content: Optional[str] = None  # 상세 내용
-    status: str = Field(default="pending")  # pending, reviewed, resolved
+    reporter_id: int = Field(foreign_key="user.id")
+    reported_user_id: int = Field(foreign_key="user.id")
+    reason: str
+    content: Optional[str] = None
+    status: str = Field(default="pending")
+    created_at: datetime = Field(default_factory=get_kst_now)
+
+
+# ------------------------------------------------------
+# ❤️ PostLike (게시글 좋아요) 모델
+# ------------------------------------------------------
+class PostLike(SQLModel, table=True):
+    """게시글 좋아요 모델"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    post_id: int = Field(foreign_key="post.id")
+    created_at: datetime = Field(default_factory=get_kst_now)
+
+
+# ------------------------------------------------------
+# ❤️ CommentLike (댓글 좋아요) 모델 [추가됨]
+# ------------------------------------------------------
+class CommentLike(SQLModel, table=True):
+    """댓글 좋아요 모델"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    comment_id: int = Field(foreign_key="comment.id")
+    created_at: datetime = Field(default_factory=get_kst_now)
+
+
+# ------------------------------------------------------
+# 🚨 PostReport (게시글 신고) 모델
+# ------------------------------------------------------
+class PostReport(SQLModel, table=True):
+    """게시글 신고 모델"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    reporter_id: int = Field(foreign_key="user.id")
+    reported_post_id: int = Field(foreign_key="post.id")
+    reason: str
+    status: str = Field(default="pending")
+    created_at: datetime = Field(default_factory=get_kst_now)
+
+
+# ------------------------------------------------------
+# 🚨 CommentReport (댓글 신고) 모델
+# ------------------------------------------------------
+class CommentReport(SQLModel, table=True):
+    """댓글 신고 모델"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    reporter_id: int = Field(foreign_key="user.id")
+    reported_comment_id: int = Field(foreign_key="comment.id")
+    reason: str
+    status: str = Field(default="pending")
+    created_at: datetime = Field(default_factory=get_kst_now)
+
+
+# ------------------------------------------------------
+# 🔔 Notification (알림) 모델
+# ------------------------------------------------------
+class Notification(SQLModel, table=True):
+    """사용자 알림 모델"""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    receiver_id: int = Field(foreign_key="user.id")
+    sender_id: int = Field(foreign_key="user.id")
+    
+    type: str      # comment, like, friend, system
+    message: str
+    
+    related_post_id: Optional[int] = Field(default=None, foreign_key="post.id")
+    
+    is_read: bool = Field(default=False)
     created_at: datetime = Field(default_factory=get_kst_now)

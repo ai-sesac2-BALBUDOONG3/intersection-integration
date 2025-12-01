@@ -1,14 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Optional, List
 from pydantic import BaseModel
-from ..schemas import UserCreate, UserRead, UserUpdate, Token
-from ..models import User
+from sqlmodel import Session, select, desc
+from sqlalchemy import or_
+
+# 🔥 스키마 및 모델 임포트
+from ..schemas import UserCreate, UserRead, UserUpdate, Token, NotificationRead
+from ..models import User, Post, Notification
 from ..db import engine
-from sqlmodel import Session, select
 from ..auth import get_password_hash, verify_password, create_access_token, decode_access_token
 from fastapi.security import OAuth2PasswordBearer
-
-# 추천 / 커뮤니티 서비스 import
 from ..services import assign_community, get_recommended_friends
 
 router = APIRouter(tags=["users"])
@@ -44,7 +45,6 @@ class LoginRequest(BaseModel):
 @router.post("/token", response_model=Token, tags=["auth"])
 def login_for_token(login_data: LoginRequest):
     with Session(engine) as session:
-        from sqlalchemy import or_
         statement = select(User).where(
             or_(
                 User.email == login_data.email,
@@ -68,109 +68,83 @@ def create_user(data: UserCreate):
         if exists:
             raise HTTPException(status_code=400, detail="login_id already exists")
 
-        # profile/background 이미지 필드는 optional하게 처리 (스키마에 있으면 전달)
-        profile_image = getattr(data, "profile_image", None)
-        background_image = getattr(data, "background_image", None)
-
         user = User(
-            login_id=data.login_id,
-            name=data.name,
-            nickname=getattr(data, "nickname", None),
-            birth_year=getattr(data, "birth_year", None),
-            gender=getattr(data, "gender", None),
-            region=getattr(data, "region", None),
-            school_name=getattr(data, "school_name", None),
-            school_type=getattr(data, "school_type", None),
-            admission_year=getattr(data, "admission_year", None),
+            login_id=data.login_id, 
+            name=data.name, 
+            nickname=data.nickname, 
+            birth_year=data.birth_year, 
+            gender=data.gender,
+            region=data.region, 
+            school_name=data.school_name,
+            school_type=data.school_type,
+            admission_year=data.admission_year,
             email=data.login_id,
-            profile_image=profile_image,
-            background_image=background_image
+            profile_image=data.profile_image,
+            background_image=data.background_image
         )
         user.password_hash = get_password_hash(data.password)
-
         session.add(user)
         session.commit()
         session.refresh(user)
 
-        # assign_community: user 객체를 업데이트할 수 있으므로 호출 후 다시 커밋
-        try:
-            assign_community(session, user)
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-        except Exception:
-            # assign_community 가 없거나 실패해도 기존 생성은 유효하도록 예외를 무시하지 않고 로그 남기는 것이 좋음.
-            # 여기서는 안전히 넘어감(실제 환경에서는 로깅 필요)
-            pass
+        # 커뮤니티 자동 배정
+        assign_community(session, user)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
 
-        # 반환시 가능한 필드만 포함 (UserRead 스키마에 맞춰)
         return UserRead(
-            id=user.id,
-            name=user.name,
-            birth_year=user.birth_year,
-            region=user.region,
+            id=user.id, 
+            name=user.name, 
+            birth_year=user.birth_year, 
+            region=user.region, 
             school_name=user.school_name,
-            profile_image=getattr(user, "profile_image", None),
-            background_image=getattr(user, "background_image", None),
-            nickname=getattr(user, "nickname", None)
+            profile_image=user.profile_image,
+            background_image=user.background_image
         )
 
 
 @router.get("/users/me", response_model=UserRead)
 def get_my_info(current_user: User = Depends(get_current_user)):
-    # Feed(Post) 관련 기능은 models.Post 가 있을 때만 수행 — 없으면 빈 리스트 반환
-    feed_images: List[str] = []
-    # nickname 포함 등 스키마 호환성 고려해 반환
-    try:
-        # 지연 임포트: 프로젝트에 Post 모델/desc 가 없으면 ImportError 발생 가능
-        from ..models import Post
-        from sqlmodel import desc
+    with Session(engine) as session:
+        # 내 게시글 이미지들 (피드용)
+        statement = (
+            select(Post)
+            .where(Post.author_id == current_user.id)
+            .where(Post.image_url != None)
+            .order_by(desc(Post.created_at))
+        )
+        my_posts = session.exec(statement).all()
+        feed_images_list = [post.image_url for post in my_posts if post.image_url]
 
-        with Session(engine) as session:
-            statement = (
-                select(Post)
-                .where(Post.author_id == current_user.id)
-                .where(Post.image_url != None)
-                .order_by(desc(Post.created_at))
-            )
-            my_posts = session.exec(statement).all()
-            feed_images = [post.image_url for post in my_posts if getattr(post, "image_url", None)]
-    except Exception:
-        # Post 모델이 없거나 다른 오류 발생 시 feed_images는 빈 리스트
-        feed_images = []
-
-    return UserRead(
-        id=current_user.id,
-        name=current_user.name,
-        nickname=getattr(current_user, "nickname", None),
-        birth_year=getattr(current_user, "birth_year", None),
-        region=getattr(current_user, "region", None),
-        school_name=getattr(current_user, "school_name", None),
-        profile_image=getattr(current_user, "profile_image", None),
-        background_image=getattr(current_user, "background_image", None),
-        feed_images=feed_images
-    )
+        return UserRead(
+            id=current_user.id, 
+            name=current_user.name, 
+            nickname=current_user.nickname,
+            birth_year=current_user.birth_year, 
+            region=current_user.region, 
+            school_name=current_user.school_name,
+            profile_image=current_user.profile_image,
+            background_image=current_user.background_image,
+            feed_images=feed_images_list
+        )
 
 
-@router.get("/users/me/recommended", response_model=List[UserRead])
+@router.get("/users/me/recommended", response_model=list[UserRead])
 def recommended(current_user: User = Depends(get_current_user)):
     with Session(engine) as session:
-        friends = []
-        try:
-            friends = get_recommended_friends(session, current_user)
-        except Exception:
-            friends = []
-
+        # 추천 친구 서비스 호출 (이미 친구/차단/신고 제외됨)
+        friends = get_recommended_friends(session, current_user)
+        
         return [
             UserRead(
-                id=u.id,
-                name=u.name,
-                birth_year=getattr(u, "birth_year", None),
-                region=getattr(u, "region", None),
-                school_name=getattr(u, "school_name", None),
-                profile_image=getattr(u, "profile_image", None),
-                background_image=getattr(u, "background_image", None),
-                nickname=getattr(u, "nickname", None)
+                id=u.id, 
+                name=u.name, 
+                birth_year=u.birth_year, 
+                region=u.region, 
+                school_name=u.school_name,
+                profile_image=u.profile_image,
+                background_image=u.background_image
             ) for u in friends
         ]
 
@@ -190,38 +164,82 @@ def update_my_info(data: UserUpdate, token: str = Depends(oauth2_scheme)):
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # 텍스트 필드 업데이트 (존재하면 덮어쓰기)
-        for fld in ("name", "nickname", "birth_year", "gender", "region", "school_name", "school_type", "admission_year"):
-            if getattr(data, fld, None) is not None:
-                setattr(user, fld, getattr(data, fld))
-
-        # 이미지 필드 (옵셔널)
-        if getattr(data, "profile_image", None) is not None:
+        # 필드 업데이트
+        if data.name is not None: user.name = data.name
+        if data.nickname is not None: user.nickname = data.nickname
+        if data.birth_year is not None: user.birth_year = data.birth_year
+        if data.gender is not None: user.gender = data.gender
+        if data.region is not None: user.region = data.region
+        if data.school_name is not None: user.school_name = data.school_name
+        if data.school_type is not None: user.school_type = data.school_type
+        if data.admission_year is not None: user.admission_year = data.admission_year
+        
+        if data.profile_image is not None:
             user.profile_image = data.profile_image
-        if getattr(data, "background_image", None) is not None:
+        if data.background_image is not None:
             user.background_image = data.background_image
 
-        # 저장
         session.add(user)
         session.commit()
         session.refresh(user)
 
-        # 커뮤니티 재배치 (필요 시)
-        try:
-            assign_community(session, user)
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-        except Exception:
-            pass
+        # 정보 변경에 따른 커뮤니티 재배정
+        assign_community(session, user)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        # 피드 이미지 재조회
+        statement = (
+            select(Post)
+            .where(Post.author_id == user.id)
+            .where(Post.image_url != None)
+            .order_by(desc(Post.created_at))
+        )
+        my_posts = session.exec(statement).all()
+        feed_images_list = [post.image_url for post in my_posts if post.image_url]
 
         return UserRead(
-            id=user.id,
-            name=user.name,
-            birth_year=getattr(user, "birth_year", None),
-            region=getattr(user, "region", None),
-            school_name=getattr(user, "school_name", None),
-            profile_image=getattr(user, "profile_image", None),
-            background_image=getattr(user, "background_image", None),
-            nickname=getattr(user, "nickname", None)
+            id=user.id, 
+            name=user.name, 
+            birth_year=user.birth_year, 
+            region=user.region, 
+            school_name=user.school_name,
+            profile_image=user.profile_image,
+            background_image=user.background_image,
+            feed_images=feed_images_list 
         )
+
+
+# ------------------------------------------------------
+# 🔔 내 알림 목록 조회 API
+# ------------------------------------------------------
+@router.get("/users/me/notifications", response_model=List[NotificationRead])
+def get_my_notifications(current_user: User = Depends(get_current_user)):
+    """내 알림 목록 조회 (최신순)"""
+    with Session(engine) as session:
+        statement = (
+            select(Notification, User)
+            .join(User, Notification.sender_id == User.id)
+            .where(Notification.receiver_id == current_user.id)
+            .order_by(Notification.created_at.desc())
+        )
+        results = session.exec(statement).all()
+        
+        notif_list = []
+        for notif, sender in results:
+            sender_name = sender.name or sender.nickname or "알 수 없음"
+            
+            notif_list.append(NotificationRead(
+                id=notif.id,
+                sender_id=notif.sender_id,
+                sender_name=sender_name,
+                sender_profile_image=sender.profile_image, # 보낸 사람 프사
+                type=notif.type,
+                message=notif.message,
+                related_post_id=notif.related_post_id,
+                is_read=notif.is_read,
+                created_at=notif.created_at.isoformat()
+            ))
+            
+        return notif_list
