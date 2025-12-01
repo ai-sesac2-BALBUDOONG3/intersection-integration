@@ -103,8 +103,8 @@ class CommentRead(BaseModel):
     
     # 👤 작성자 정보
     user_name: Optional[str] = None
-    author_profile_image: Optional[str] = None # 🔥 [추가] 프론트 요청사항
-
+    author_profile_image: Optional[str] = None 
+    
     # 👍 [추가] 좋아요 정보
     like_count: int = 0
     is_liked: bool = False
