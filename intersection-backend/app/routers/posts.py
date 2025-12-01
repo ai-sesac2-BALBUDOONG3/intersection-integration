@@ -7,6 +7,7 @@ from ..schemas import PostCreate, PostRead, PostReportCreate, PostReportRead
 from ..models import Post, User, PostLike, PostReport, UserBlock, Notification, UserReport
 from ..db import engine
 from ..routers.users import get_current_user
+from sqlalchemy import or_
 
 router = APIRouter(tags=["posts"])
 
@@ -39,10 +40,39 @@ def create_post(payload: PostCreate, current_user: User = Depends(get_current_us
 def list_posts(
     skip: int = 0,    
     limit: int = 10,  
+    keyword: Optional[str] = None,
+    filter_type: str = "all",  # "all"(전체), "school"(내 커뮤니티만)
+
     current_user: Optional[User] = Depends(get_current_user)
 ):
     with Session(engine) as session:
         statement = select(Post, User).join(User, Post.author_id == User.id)
+
+# -------------------------------------------------------
+        # 🔍 1. 검색 기능 (키워드가 있을 때만 작동)
+        # -------------------------------------------------------
+        if keyword:
+            statement = statement.where(
+                or_(
+                    Post.content.contains(keyword),      # 내용 검색
+                    User.name.contains(keyword),         # 작성자 이름 검색
+                    User.nickname.contains(keyword)      # 닉네임 검색
+                )
+            )
+
+        # -------------------------------------------------------
+        # 🏫 2. 게시판 분리 (필터링)
+        # -------------------------------------------------------
+        if filter_type == "school" and current_user:
+            # 내 학교(커뮤니티) 사람들의 글만 보여줌
+            if current_user.community_id:
+                statement = statement.where(User.community_id == current_user.community_id)
+            else:
+                # 커뮤니티가 없는 유저라면? (예외 처리: 내 글만 보여주거나 빈 목록)
+                # 여기서는 일단 결과가 없도록 처리
+                statement = statement.where(User.id == -1)
+
+
 
         # 🚫 필터링 (차단 + 신고)
         if current_user:

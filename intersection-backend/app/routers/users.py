@@ -243,3 +243,44 @@ def get_my_notifications(current_user: User = Depends(get_current_user)):
             ))
             
         return notif_list
+    
+# ------------------------------------------------------
+
+# 기존 import 아래에 추가할 것 없음
+# 맨 아래나 적절한 위치에 이 함수를 추가하세요.
+
+@router.get("/users/search", response_model=List[UserRead])
+def search_users(
+    keyword: str, 
+    current_user: User = Depends(get_current_user)
+):
+    """
+    🔍 유저 검색 API (이름 또는 닉네임)
+    """
+    if not keyword:
+        return []
+
+    with Session(engine) as session:
+        statement = select(User).where(
+            or_(
+                User.name.contains(keyword),
+                User.nickname.contains(keyword)
+            )
+        ).where(User.id != current_user.id)  # 나 자신은 검색 제외
+        
+        # (선택) 차단한 유저 제외 로직을 여기에 추가할 수도 있습니다.
+        
+        results = session.exec(statement).limit(20).all() # 최대 20명만
+        
+        return [
+            UserRead(
+                id=u.id, 
+                name=u.name, 
+                nickname=u.nickname,
+                birth_year=u.birth_year, 
+                region=u.region, 
+                school_name=u.school_name,
+                profile_image=u.profile_image,
+                background_image=u.background_image
+            ) for u in results
+        ]
