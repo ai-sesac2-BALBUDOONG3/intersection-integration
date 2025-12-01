@@ -165,6 +165,9 @@ def create_or_get_chat_room(
         # 신고 또는 차단 중 하나라도 당했으면 True
         they_blocked_or_reported = they_reported_me or they_blocked_me_real
         
+        # ✅ 상대방이 채팅방을 나갔는지 확인
+        they_left = (room.left_user_id == friend_id)
+        
         return ChatRoomRead(
             id=room.id,
             user1_id=room.user1_id,
@@ -183,7 +186,9 @@ def create_or_get_chat_room(
             friend_profile_image=friend_profile_image,
             # ✅ 신고/차단 상태 추가 (통합)
             i_reported_them=i_reported_or_blocked,
-            they_blocked_me=they_blocked_or_reported
+            they_blocked_me=they_blocked_or_reported,
+            # ✅ 채팅방 나가기 상태 추가
+            they_left=they_left
         )
 
 
@@ -224,6 +229,10 @@ def get_my_chat_rooms(current_user_id: int = Depends(get_current_user_id)):
                 ChatMessage.room_id == room.id
             ).order_by(ChatMessage.created_at.desc()).limit(1)
             last_message = session.exec(last_msg_statement).first()
+            
+            # ✅ 메시지가 없는 채팅방은 목록에서 제외
+            if not last_message:
+                continue
             
             # 읽지 않은 메시지 수
             unread_statement = select(ChatMessage).where(
@@ -266,6 +275,9 @@ def get_my_chat_rooms(current_user_id: int = Depends(get_current_user_id)):
             
             they_blocked_or_reported = they_reported_me or they_blocked_me_real
             
+            # ✅ 상대방이 채팅방을 나갔는지 확인
+            they_left = (room.left_user_id == friend_id)
+            
             result.append(ChatRoomRead(
                 id=room.id,
                 user1_id=room.user1_id,
@@ -284,7 +296,9 @@ def get_my_chat_rooms(current_user_id: int = Depends(get_current_user_id)):
                 friend_profile_image=friend_profile_image,
                 # ✅ 신고/차단 상태 추가 (통합)
                 i_reported_them=i_reported_or_blocked,
-                they_blocked_me=they_blocked_or_reported
+                they_blocked_me=they_blocked_or_reported,
+                # ✅ 채팅방 나가기 상태 추가
+                they_left=they_left
             ))
         
         return result
@@ -493,7 +507,27 @@ def leave_chat_room(
         if room.left_user_id == current_user_id:
             raise HTTPException(status_code=400, detail="이미 나간 채팅방입니다")
         
-        # 나간 사용자로 표시
+        # ✅ 상대방이 이미 나갔는지 확인
+        friend_id = room.user2_id if room.user1_id == current_user_id else room.user1_id
+        other_user_already_left = (room.left_user_id == friend_id)
+        
+        # ✅ 양쪽 다 나간 경우: 채팅방과 메시지 모두 삭제
+        if other_user_already_left:
+            # 1. 채팅방의 모든 메시지 삭제
+            delete_messages_statement = select(ChatMessage).where(
+                ChatMessage.room_id == room_id
+            )
+            messages = session.exec(delete_messages_statement).all()
+            for msg in messages:
+                session.delete(msg)
+            
+            # 2. 채팅방 삭제
+            session.delete(room)
+            session.commit()
+            
+            return {"message": "채팅방을 나갔습니다. 대화 내용이 삭제되었습니다."}
+        
+        # ✅ 한쪽만 나간 경우: left_user_id 업데이트
         room.left_user_id = current_user_id
         session.add(room)
         

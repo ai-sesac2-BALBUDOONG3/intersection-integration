@@ -6,7 +6,7 @@ from sqlalchemy import or_
 
 # 🔥 스키마 및 모델 임포트
 from ..schemas import UserCreate, UserRead, UserUpdate, Token, NotificationRead
-from ..models import User, Post, Notification
+from ..models import User, Post, Notification, UserBlock, UserReport  # ✅ UserBlock, UserReport 추가
 from ..db import engine
 from ..auth import get_password_hash, verify_password, create_access_token, decode_access_token
 from fastapi.security import OAuth2PasswordBearer
@@ -133,9 +133,26 @@ def get_my_info(current_user: User = Depends(get_current_user)):
 @router.get("/users/me/recommended", response_model=list[UserRead])
 def recommended(current_user: User = Depends(get_current_user)):
     with Session(engine) as session:
-        # 추천 친구 서비스 호출 (이미 친구/차단/신고 제외됨)
+        # ✅ 차단한 사용자 ID 목록 조회
+        blocked_statement = select(UserBlock.blocked_user_id).where(
+            UserBlock.user_id == current_user.id
+        )
+        blocked_ids = set([row for row in session.exec(blocked_statement).all()])
+        
+        # ✅ 신고한 사용자 ID 목록 조회
+        reported_statement = select(UserReport.reported_user_id).where(
+            UserReport.reporter_id == current_user.id,
+            UserReport.status == "pending"
+        )
+        reported_ids = set([row for row in session.exec(reported_statement).all()])
+        
+        # ✅ 제외할 사용자 ID 합치기
+        excluded_ids = blocked_ids | reported_ids
+        
+        # 추천 친구 서비스 호출
         friends = get_recommended_friends(session, current_user)
         
+        # ✅ 차단/신고한 사용자 제외
         return [
             UserRead(
                 id=u.id, 
@@ -145,7 +162,7 @@ def recommended(current_user: User = Depends(get_current_user)):
                 school_name=u.school_name,
                 profile_image=u.profile_image,
                 background_image=u.background_image
-            ) for u in friends
+            ) for u in friends if u.id not in excluded_ids  # ✅ 필터링 추가
         ]
 
 

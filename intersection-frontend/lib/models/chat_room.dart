@@ -20,6 +20,9 @@ class ChatRoom {
   // ✅ 신고/차단 상태 (통합)
   final bool iReportedThem;  // 내가 상대방을 신고/차단함
   final bool theyBlockedMe;  // 상대방이 나를 신고/차단함
+  
+  // ✅ 채팅방 나가기 상태
+  final bool theyLeft;  // 상대방이 채팅방을 나감
 
   ChatRoom({
     required this.id,
@@ -35,8 +38,9 @@ class ChatRoom {
     this.lastFileUrl,
     this.lastFileName,
     this.friendProfileImage,
-    this.iReportedThem = false,  // ✅ 통합
-    this.theyBlockedMe = false,  // ✅ 통합
+    this.iReportedThem = false,
+    this.theyBlockedMe = false,
+    this.theyLeft = false,  // ✅ 추가
   });
 
   // ✅ 마지막 메시지가 이미지인지 확인
@@ -79,8 +83,9 @@ class ChatRoom {
       lastFileUrl: json['last_file_url'],
       lastFileName: json['last_file_name'],
       friendProfileImage: json['friend_profile_image'],
-      iReportedThem: json['i_reported_them'] ?? false,  // ✅ 통합
-      theyBlockedMe: json['they_blocked_me'] ?? false,  // ✅ 통합
+      iReportedThem: json['i_reported_them'] ?? false,
+      theyBlockedMe: json['they_blocked_me'] ?? false,
+      theyLeft: json['they_left'] ?? false,  // ✅ 추가
     );
   }
 
@@ -99,8 +104,9 @@ class ChatRoom {
       'last_file_url': lastFileUrl,
       'last_file_name': lastFileName,
       'friend_profile_image': friendProfileImage,
-      'i_reported_them': iReportedThem,  // ✅ 통합
-      'they_blocked_me': theyBlockedMe,  // ✅ 통합
+      'i_reported_them': iReportedThem,
+      'they_blocked_me': theyBlockedMe,
+      'they_left': theyLeft,  // ✅ 추가
     };
   }
 }

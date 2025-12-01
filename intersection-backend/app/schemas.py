@@ -106,8 +106,8 @@ class CommentRead(BaseModel):
     author_profile_image: Optional[str] = None 
     
     # 👍 [추가] 좋아요 정보
-    likes_count: int = 0
-    liked: bool = False
+    like_count: int = 0
+    is_liked: bool = False
 
 class CommentUpdate(BaseModel):
     """댓글 수정 요청"""
@@ -154,6 +154,8 @@ class ChatRoomRead(BaseModel):
     # ✅ 신고/차단 상태 추가 (통합)
     i_reported_them: bool = False  # 내가 상대방을 신고/차단함
     they_blocked_me: bool = False  # 상대방이 나를 신고/차단함
+    # ✅ 채팅방 나가기 상태 추가
+    they_left: bool = False  # 상대방이 채팅방을 나감
 
 class ChatMessageCreate(BaseModel):
     """메시지 전송 요청"""

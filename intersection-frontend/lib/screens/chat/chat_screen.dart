@@ -27,6 +27,7 @@ class ChatScreen extends StatefulWidget {
   final String? friendProfileImage;
   final bool iReportedThem;  // ✅ 통합: 내가 신고/차단함
   final bool theyBlockedMe;  // ✅ 통합: 상대방이 나를 신고/차단함
+  final bool theyLeft;  // ✅ 상대방이 채팅방을 나감
 
   const ChatScreen({
     super.key,
@@ -34,8 +35,9 @@ class ChatScreen extends StatefulWidget {
     required this.friendId,
     required this.friendName,
     this.friendProfileImage,
-    this.iReportedThem = false,  // ✅ 통합
-    this.theyBlockedMe = false,  // ✅ 통합
+    this.iReportedThem = false,
+    this.theyBlockedMe = false,
+    this.theyLeft = false,  // ✅ 추가
   });
 
   @override
@@ -533,7 +535,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    if (widget.iReportedThem || widget.theyBlockedMe) {  // ✅ 통합
+    if (widget.iReportedThem || widget.theyBlockedMe || widget.theyLeft) {  // ✅ 나가기 추가
       _showBlockedDialog();
       return;
     }
@@ -602,6 +604,9 @@ class _ChatScreenState extends State<ChatScreen> {
     } else if (widget.theyBlockedMe) {
       // ✅ 통합: 상대방이 나를 신고/차단함  
       message = "상대방이 회원님을 신고 또는 차단하여 메시지를 보낼 수 없습니다.";
+    } else if (widget.theyLeft) {
+      // ✅ 상대방이 채팅방을 나감
+      message = "상대방이 채팅방을 나가서 메시지를 보낼 수 없습니다.";
     } else {
       message = "이 사용자와 메시지를 주고받을 수 없습니다.";
     }
@@ -798,6 +803,34 @@ class _ChatScreenState extends State<ChatScreen> {
                 ],
               ),
             ),
+          
+          // ✅ 상대방이 채팅방을 나간 경우 배너
+          if (widget.theyLeft && !widget.iReportedThem && !widget.theyBlockedMe)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.grey.shade100,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.exit_to_app,
+                    color: Colors.grey.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "상대방이 채팅방을 나갔습니다. 메시지를 보낼 수 없습니다.",
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
           Expanded(
             child: _isLoading
@@ -883,7 +916,7 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                if (!widget.iReportedThem && !widget.theyBlockedMe)  // ✅ iWasReported 추가
+                if (!widget.iReportedThem && !widget.theyBlockedMe && !widget.theyLeft)  // ✅ iWasReported 추가
                   IconButton(
                     icon: Icon(
                       _showEmojiPicker 
@@ -900,7 +933,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       }
                     },
                   ),
-                if (!widget.iReportedThem && !widget.theyBlockedMe)  // ✅ iWasReported 추가
+                if (!widget.iReportedThem && !widget.theyBlockedMe && !widget.theyLeft)  // ✅ iWasReported 추가
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline, color: Colors.blue),
                     onPressed: _isUploading ? null : _showAttachmentOptions,
@@ -908,12 +941,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    enabled: !widget.iReportedThem && !widget.theyBlockedMe && !_isUploading,  // ✅ 통합
+                    enabled: !widget.iReportedThem && !widget.theyBlockedMe && !widget.theyLeft && !_isUploading,  // ✅ 나가기 추가
                     decoration: InputDecoration(
                       hintText: _isUploading
                           ? "파일 업로드 중..."
-                          : (widget.iReportedThem || widget.theyBlockedMe)
-                              ? "메시지를 보낼 수 없습니다"  // ✅ 통합
+                          : (widget.iReportedThem || widget.theyBlockedMe || widget.theyLeft)
+                              ? "메시지를 보낼 수 없습니다"
                               : "메시지를 입력하세요...",
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
@@ -950,12 +983,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(width: 12),
                 GestureDetector(
-                  onTap: _isSending || widget.iReportedThem || widget.theyBlockedMe || _isUploading ? null : _sendMessage,  // ✅ 통합
+                  onTap: _isSending || widget.iReportedThem || widget.theyBlockedMe || widget.theyLeft || _isUploading ? null : _sendMessage,  // ✅ 통합
                   child: Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: _isSending || widget.iReportedThem || widget.theyBlockedMe || _isUploading ? Colors.grey : Colors.blue,  // ✅ 통합
+                      color: _isSending || widget.iReportedThem || widget.theyBlockedMe || widget.theyLeft || _isUploading ? Colors.grey : Colors.blue,  // ✅ 통합
                       shape: BoxShape.circle,
                     ),
                     child: _isSending || _isUploading

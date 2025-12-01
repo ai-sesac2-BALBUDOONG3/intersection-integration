@@ -253,8 +253,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
               friendId: room.friendId,
               friendName: room.friendName ?? "Unknown",
               friendProfileImage: room.friendProfileImage,
-              iReportedThem: room.iReportedThem,  // ✅ 통합
-              theyBlockedMe: room.theyBlockedMe,  // ✅ 통합
+              iReportedThem: room.iReportedThem,
+              theyBlockedMe: room.theyBlockedMe,
+              theyLeft: room.theyLeft,  // ✅ 추가
             ),
           ),
         ).then((_) => _loadChatRooms());
