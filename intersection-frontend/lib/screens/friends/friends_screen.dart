@@ -4,6 +4,7 @@ import 'package:intersection/models/user.dart';
 import 'package:intersection/screens/chat/chat_screen.dart';
 import 'package:intersection/screens/friends/friend_profile_screen.dart';
 import 'package:intersection/screens/profile/profile_screen.dart';
+import 'package:intersection/screens/common/image_viewer.dart';
 import 'package:intersection/services/api_service.dart';
 import 'package:intersection/config/api_config.dart';
 import 'dart:typed_data';
@@ -158,14 +159,27 @@ class _FriendsScreenState extends State<FriendsScreen> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 32,
-            backgroundImage:
-                buildImageProvider(user.profileImageUrl, user.profileImageBytes),
-            child: (user.profileImageUrl == null &&
-                    user.profileImageBytes == null)
-                ? const Icon(Icons.person, size: 34)
-                : null,
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ImageViewer(
+                    imageUrl: user.profileImageUrl,
+                    bytes: user.profileImageBytes,
+                  ),
+                ),
+              );
+            },
+            child: CircleAvatar(
+              radius: 32,
+              backgroundImage:
+                  buildImageProvider(user.profileImageUrl, user.profileImageBytes),
+              child: (user.profileImageUrl == null &&
+                      user.profileImageBytes == null)
+                  ? const Icon(Icons.person, size: 34)
+                  : null,
+            ),
           ),
           const SizedBox(width: 14),
 
@@ -220,14 +234,27 @@ class _FriendsScreenState extends State<FriendsScreen> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundImage:
-                buildImageProvider(user.profileImageUrl, user.profileImageBytes),
-            child: (user.profileImageUrl == null &&
-                    user.profileImageBytes == null)
-                ? const Icon(Icons.person, size: 30)
-                : null,
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ImageViewer(
+                    imageUrl: user.profileImageUrl,
+                    bytes: user.profileImageBytes,
+                  ),
+                ),
+              );
+            },
+            child: CircleAvatar(
+              radius: 30,
+              backgroundImage:
+                  buildImageProvider(user.profileImageUrl, user.profileImageBytes),
+              child: (user.profileImageUrl == null &&
+                      user.profileImageBytes == null)
+                  ? const Icon(Icons.person, size: 30)
+                  : null,
+            ),
           ),
           const SizedBox(width: 14),
 
