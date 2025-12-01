@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Optional, List
 from pydantic import BaseModel
-from ..schemas import UserCreate, UserRead, UserUpdate, Token, NotificationRead
-from ..models import User, Post, Notification 
-from ..db import engine
 from sqlmodel import Session, select, desc
+from sqlalchemy import or_
+
+# 🔥 스키마 및 모델 임포트
+from ..schemas import UserCreate, UserRead, UserUpdate, Token, NotificationRead
+from ..models import User, Post, Notification
+from ..db import engine
 from ..auth import get_password_hash, verify_password, create_access_token, decode_access_token
 from fastapi.security import OAuth2PasswordBearer
 from ..services import assign_community, get_recommended_friends
@@ -13,11 +16,11 @@ router = APIRouter(tags=["users"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
-# (SERVER_BASE_URL, to_full_url 함수 삭제됨)
 
 def get_user_by_id(session: Session, user_id: int) -> Optional[User]:
     statement = select(User).where(User.id == user_id)
     return session.exec(statement).first()
+
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     payload = decode_access_token(token)
@@ -33,14 +36,15 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
             raise HTTPException(status_code=404, detail="User not found")
         return user
 
+
 class LoginRequest(BaseModel):
     email: str
     password: str
 
+
 @router.post("/token", response_model=Token, tags=["auth"])
 def login_for_token(login_data: LoginRequest):
     with Session(engine) as session:
-        from sqlalchemy import or_
         statement = select(User).where(
             or_(
                 User.email == login_data.email,
@@ -54,6 +58,7 @@ def login_for_token(login_data: LoginRequest):
 
         token = create_access_token({"user_id": user.id})
         return {"access_token": token, "token_type": "bearer"}
+
 
 @router.post("/users/", response_model=UserRead)
 def create_user(data: UserCreate):
@@ -82,6 +87,7 @@ def create_user(data: UserCreate):
         session.commit()
         session.refresh(user)
 
+        # 커뮤니티 자동 배정
         assign_community(session, user)
         session.add(user)
         session.commit()
@@ -93,13 +99,15 @@ def create_user(data: UserCreate):
             birth_year=user.birth_year, 
             region=user.region, 
             school_name=user.school_name,
-            profile_image=user.profile_image,      # 👈 변환 없이 그대로 반환
-            background_image=user.background_image # 👈 변환 없이 그대로 반환
+            profile_image=user.profile_image,
+            background_image=user.background_image
         )
+
 
 @router.get("/users/me", response_model=UserRead)
 def get_my_info(current_user: User = Depends(get_current_user)):
     with Session(engine) as session:
+        # 내 게시글 이미지들 (피드용)
         statement = (
             select(Post)
             .where(Post.author_id == current_user.id)
@@ -107,8 +115,6 @@ def get_my_info(current_user: User = Depends(get_current_user)):
             .order_by(desc(Post.created_at))
         )
         my_posts = session.exec(statement).all()
-        
-        # 👈 변환 없이 그대로 리스트 생성
         feed_images_list = [post.image_url for post in my_posts if post.image_url]
 
         return UserRead(
@@ -118,14 +124,16 @@ def get_my_info(current_user: User = Depends(get_current_user)):
             birth_year=current_user.birth_year, 
             region=current_user.region, 
             school_name=current_user.school_name,
-            profile_image=current_user.profile_image,      # 👈 그대로 반환
-            background_image=current_user.background_image, # 👈 그대로 반환
+            profile_image=current_user.profile_image,
+            background_image=current_user.background_image,
             feed_images=feed_images_list
         )
+
 
 @router.get("/users/me/recommended", response_model=list[UserRead])
 def recommended(current_user: User = Depends(get_current_user)):
     with Session(engine) as session:
+        # 추천 친구 서비스 호출 (이미 친구/차단/신고 제외됨)
         friends = get_recommended_friends(session, current_user)
         
         return [
@@ -135,10 +143,11 @@ def recommended(current_user: User = Depends(get_current_user)):
                 birth_year=u.birth_year, 
                 region=u.region, 
                 school_name=u.school_name,
-                profile_image=u.profile_image,      # 👈 그대로 반환
-                background_image=u.background_image 
+                profile_image=u.profile_image,
+                background_image=u.background_image
             ) for u in friends
         ]
+
 
 @router.put("/users/me", response_model=UserRead)
 def update_my_info(data: UserUpdate, token: str = Depends(oauth2_scheme)):
@@ -155,6 +164,7 @@ def update_my_info(data: UserUpdate, token: str = Depends(oauth2_scheme)):
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
+        # 필드 업데이트
         if data.name is not None: user.name = data.name
         if data.nickname is not None: user.nickname = data.nickname
         if data.birth_year is not None: user.birth_year = data.birth_year
@@ -173,11 +183,13 @@ def update_my_info(data: UserUpdate, token: str = Depends(oauth2_scheme)):
         session.commit()
         session.refresh(user)
 
+        # 정보 변경에 따른 커뮤니티 재배정
         assign_community(session, user)
         session.add(user)
         session.commit()
         session.refresh(user)
 
+        # 피드 이미지 재조회
         statement = (
             select(Post)
             .where(Post.author_id == user.id)
@@ -185,7 +197,6 @@ def update_my_info(data: UserUpdate, token: str = Depends(oauth2_scheme)):
             .order_by(desc(Post.created_at))
         )
         my_posts = session.exec(statement).all()
-        # 👈 변환 없이 그대로 리스트 생성
         feed_images_list = [post.image_url for post in my_posts if post.image_url]
 
         return UserRead(
@@ -194,10 +205,11 @@ def update_my_info(data: UserUpdate, token: str = Depends(oauth2_scheme)):
             birth_year=user.birth_year, 
             region=user.region, 
             school_name=user.school_name,
-            profile_image=user.profile_image,      # 👈 그대로 반환
-            background_image=user.background_image, # 👈 그대로 반환
+            profile_image=user.profile_image,
+            background_image=user.background_image,
             feed_images=feed_images_list 
         )
+
 
 # ------------------------------------------------------
 # 🔔 내 알림 목록 조회 API
@@ -222,7 +234,7 @@ def get_my_notifications(current_user: User = Depends(get_current_user)):
                 id=notif.id,
                 sender_id=notif.sender_id,
                 sender_name=sender_name,
-                sender_profile_image=sender.profile_image, # 👈 변환 없이 그대로 반환
+                sender_profile_image=sender.profile_image, # 보낸 사람 프사
                 type=notif.type,
                 message=notif.message,
                 related_post_id=notif.related_post_id,
