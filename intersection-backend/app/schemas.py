@@ -145,6 +145,12 @@ class ChatRoomRead(BaseModel):
     last_message_time: Optional[str] = None
     unread_count: int = 0
     created_at: str
+    # ✅ 마지막 메시지 상세 정보 추가
+    last_message_type: Optional[str] = None  # "normal", "image", "file"
+    last_file_url: Optional[str] = None      # 이미지/파일 URL
+    last_file_name: Optional[str] = None     # 파일명
+    # ✅ 친구 프로필 이미지 추가
+    friend_profile_image: Optional[str] = None  # 상대방 프로필 이미지
 
 class ChatMessageCreate(BaseModel):
     """메시지 전송 요청"""
