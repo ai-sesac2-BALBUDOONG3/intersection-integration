@@ -57,13 +57,13 @@ class Post {
       authorSchool: json['author_school'],
       authorRegion: json['author_region'],
 
-      likesCount: json['likes_count'] ?? 0,
-      liked: json['liked'] ?? false,
+      // 🔥 백엔드 키와 정확히 일치하도록 수정
+      likesCount: json['like_count'] ?? 0,
+      liked: json['is_liked'] ?? false,
     );
   }
 
-  // 🔥 community_screen에서 post.imageUrl 쓰던 코드 호환용
-  //   → 기존 imageUrl 대신 첫 번째 mediaUrls를 대표 이미지로 반환
+  // 대표 이미지
   String? get imageUrl {
     if (mediaUrls.isEmpty) return null;
     return mediaUrls.first;

@@ -248,11 +248,11 @@ class ApiService {
 
   static Future<List<Map<String, dynamic>>> listPosts() async {
     final url = Uri.parse("${ApiConfig.baseUrl}/posts/");
-    final response = await http.get(url, headers: _headers(json: false));
+    final response = await http.get(url, headers: _headers());
 
     if (response.statusCode == 200) {
       final list = jsonDecode(response.body) as List;
-      return List<Map<String, dynamic>>.from(list);
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
     }
 
     throw Exception("게시물 목록 불러오기 실패: ${response.body}");
@@ -310,27 +310,53 @@ class ApiService {
   // ----------------------------------------------------
   // ❤️ 게시물 좋아요 (프론트 전용: 서버 연동 전)
   // ----------------------------------------------------
-  static Future<bool> likePost(int postId) async {
-    await Future.delayed(const Duration(milliseconds: 120));
-    return true;
-  }
+  static Future<Map<String, dynamic>> togglePostLike(int postId) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/posts/$postId/like");
+    final response = await http.post(url, headers: _headers(json: false));
 
-  static Future<bool> unlikePost(int postId) async {
-    await Future.delayed(const Duration(milliseconds: 120));
-    return true;
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("게시글 좋아요 실패: ${response.body}");
   }
 
   // ----------------------------------------------------
-  // ❤️ 댓글 좋아요 (프론트 전용)
+  // ❤️ 게시물 좋아요 — 서버 토글 방식
+  // ----------------------------------------------------
+  static Future<Map<String, dynamic>> toggleLike(int postId) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/posts/$postId/like");
+
+    final response = await http.post(
+      url,
+      headers: _headers(json: false),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return {
+        "liked": data["is_liked"],
+        "likes_count": data["like_count"],
+      };
+    }
+
+    throw Exception("좋아요 토글 실패: ${response.body}");
+  }
+
+
+
+  // ----------------------------------------------------
+  // ❤️ 댓글 좋아요
   // ----------------------------------------------------
   static Future<bool> likeComment(int commentId) async {
-    await Future.delayed(const Duration(milliseconds: 120));
-    return true;
+    final url = Uri.parse("${ApiConfig.baseUrl}/comments/$commentId/like");
+    final response = await http.post(url, headers: _headers(json: false));
+    return response.statusCode == 200;
   }
 
   static Future<bool> unlikeComment(int commentId) async {
-    await Future.delayed(const Duration(milliseconds: 120));
-    return true;
+    final url = Uri.parse("${ApiConfig.baseUrl}/comments/$commentId/like");
+    final response = await http.delete(url, headers: _headers(json: false));
+    return response.statusCode == 200;
   }
 
   // ----------------------------------------------------

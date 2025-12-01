@@ -130,6 +130,15 @@ class _ThreadPostState extends State<ThreadPost> {
     likesCount = widget.post.likesCount;
   }
 
+  @override
+  void didUpdateWidget(ThreadPost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post.id != widget.post.id) {
+      liked = widget.post.liked;
+      likesCount = widget.post.likesCount;
+    }
+  }
+
   bool get isMyPost => widget.author?.id == AppState.currentUser?.id;
 
   ImageProvider _profileProvider(User? u) {
@@ -367,20 +376,29 @@ class _ThreadPostState extends State<ThreadPost> {
       children: [
         GestureDetector(
           onTap: () async {
+            final wasLiked = liked;
+
+            // 1) UI 먼저 업데이트
             setState(() {
-              if (liked) {
-                liked = false;
-                likesCount--;
-              } else {
-                liked = true;
-                likesCount++;
-              }
+              liked = !liked;
+              likesCount += liked ? 1 : -1;
             });
 
-            if (liked) {
-              await ApiService.likePost(widget.post.id);
-            } else {
-              await ApiService.unlikePost(widget.post.id);
+            try {
+              // 2) 서버로 좋아요 처리 요청 (toggle 방식)
+              final res = await ApiService.toggleLike(widget.post.id);
+
+              // 3) 서버 값으로 다시 동기화
+              setState(() {
+                liked = res["liked"];
+                likesCount = res["likes_count"];
+              });
+            } catch (e) {
+              // 실패 시 원래 상태로 복구
+              setState(() {
+                liked = wasLiked;
+                likesCount += wasLiked ? 1 : -1;
+              });
             }
           },
           child: Row(
@@ -407,8 +425,7 @@ class _ThreadPostState extends State<ThreadPost> {
 
         GestureDetector(
           onTap: () {
-            Navigator.pushNamed(context, '/comments',
-                arguments: widget.post);
+            Navigator.pushNamed(context, '/comments', arguments: widget.post);
           },
           child: Row(
             children: [
