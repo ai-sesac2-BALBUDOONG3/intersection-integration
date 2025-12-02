@@ -40,7 +40,19 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body);
     } else {
-      throw Exception("회원가입 실패: ${response.body}");
+      
+// 1. 에러 응답 본문 해독 (한글 깨짐 방지 utf8.decode 사용)
+      final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+      final errorMessage = errorBody['detail'] ?? '';
+
+      // 2. "이미 존재하는 아이디" 에러인지 확인
+      if (errorMessage == "login_id already exists") {
+        // 팝업창에 띄우고 싶은 문구로 변경하세요 👇
+        throw Exception("이미 가입된 이메일입니다.\n로그인하거나 다른 이메일을 사용해주세요.");
+      }
+
+      // 3. 그 외 다른 에러인 경우
+      throw Exception("회원가입 실패: $errorMessage");
     }
   }
 
