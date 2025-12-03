@@ -63,6 +63,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    // 위젯의 초기값으로 로컬 상태 초기화
+    _iReportedThem = widget.iReportedThem;
+    _theyBlockedMe = widget.theyBlockedMe;
     _checkBlockStatus();
     _checkReportStatus();
     _loadMessages();
@@ -535,7 +538,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    if (widget.iReportedThem || widget.theyBlockedMe || widget.theyLeft) {  // ✅ 나가기 추가
+    // 로컬 상태와 위젯 상태를 모두 확인
+    final isBlocked = _iReportedThem || _iBlockedThem || widget.iReportedThem || widget.theyBlockedMe || widget.theyLeft;
+    if (isBlocked) {
       _showBlockedDialog();
       return;
     }
@@ -598,10 +603,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _showBlockedDialog() {
     String message;
-    if (widget.iReportedThem) {
+    final isReportedOrBlocked = _iReportedThem || _iBlockedThem || widget.iReportedThem;
+    final isBlockedByThem = _theyBlockedMe || widget.theyBlockedMe;
+    
+    if (isReportedOrBlocked) {
       // ✅ 통합: 내가 신고/차단함
       message = "신고 또는 차단한 사용자에게는 메시지를 보낼 수 없습니다.";
-    } else if (widget.theyBlockedMe) {
+    } else if (isBlockedByThem) {
       // ✅ 통합: 상대방이 나를 신고/차단함  
       message = "상대방이 회원님을 신고 또는 차단하여 메시지를 보낼 수 없습니다.";
     } else if (widget.theyLeft) {
@@ -749,7 +757,7 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           // ✅ 내가 신고/차단했을 때 배너
-          if (widget.iReportedThem)
+          if (_iReportedThem || _iBlockedThem || widget.iReportedThem)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -777,7 +785,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           
           // ✅ 신고/차단 당했을 때 배너
-          if (widget.theyBlockedMe)
+          if (_theyBlockedMe || widget.theyBlockedMe)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -805,7 +813,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           
           // ✅ 상대방이 채팅방을 나간 경우 배너
-          if (widget.theyLeft && !widget.iReportedThem && !widget.theyBlockedMe)
+          if (widget.theyLeft && !(_iReportedThem || _iBlockedThem || widget.iReportedThem) && !(_theyBlockedMe || widget.theyBlockedMe))
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -902,21 +910,26 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
 
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
+          Builder(
+            builder: (context) {
+              // 로컬 상태와 위젯 상태를 모두 확인
+              final isBlockedForInput = _iReportedThem || _iBlockedThem || widget.iReportedThem || _theyBlockedMe || widget.theyBlockedMe || widget.theyLeft;
+              
+              return Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                if (!widget.iReportedThem && !widget.theyBlockedMe && !widget.theyLeft)  // ✅ iWasReported 추가
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    if (!isBlockedForInput)
                   IconButton(
                     icon: Icon(
                       _showEmojiPicker 
@@ -933,7 +946,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       }
                     },
                   ),
-                if (!widget.iReportedThem && !widget.theyBlockedMe && !widget.theyLeft)  // ✅ iWasReported 추가
+                if (!isBlockedForInput)
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline, color: Colors.blue),
                     onPressed: _isUploading ? null : _showAttachmentOptions,
@@ -941,11 +954,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    enabled: !widget.iReportedThem && !widget.theyBlockedMe && !widget.theyLeft && !_isUploading,  // ✅ 나가기 추가
+                    enabled: !isBlockedForInput && !_isUploading,
                     decoration: InputDecoration(
                       hintText: _isUploading
                           ? "파일 업로드 중..."
-                          : (widget.iReportedThem || widget.theyBlockedMe || widget.theyLeft)
+                          : isBlockedForInput
                               ? "메시지를 보낼 수 없습니다"
                               : "메시지를 입력하세요...",
                       border: OutlineInputBorder(
@@ -983,12 +996,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(width: 12),
                 GestureDetector(
-                  onTap: _isSending || widget.iReportedThem || widget.theyBlockedMe || widget.theyLeft || _isUploading ? null : _sendMessage,  // ✅ 통합
+                  onTap: _isSending || isBlockedForInput || _isUploading ? null : _sendMessage,
                   child: Container(
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: _isSending || widget.iReportedThem || widget.theyBlockedMe || widget.theyLeft || _isUploading ? Colors.grey : Colors.blue,  // ✅ 통합
+                      color: _isSending || isBlockedForInput || _isUploading ? Colors.grey : Colors.blue,
                       shape: BoxShape.circle,
                     ),
                     child: _isSending || _isUploading
@@ -1009,6 +1022,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ],
             ),
+          );
+            },
           ),
         ],
       ),
@@ -1269,6 +1284,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('${widget.friendName}님을 차단했습니다')),
                   );
+                  // 즉시 로컬 상태 업데이트
+                  setState(() {
+                    _iBlockedThem = true;
+                  });
                   await _checkBlockStatus();
                 }
               },
@@ -1353,10 +1372,11 @@ class _ChatScreenState extends State<ChatScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('신고가 접수되었습니다. 검토 후 조치하겠습니다.')),
                       );
-                      await _checkReportStatus();
+                      // 즉시 로컬 상태 업데이트
                       setState(() {
                         _iReportedThem = true;
                       });
+                      await _checkReportStatus();
                     }
                   },
                   child: const Text('신고', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
@@ -1437,10 +1457,16 @@ class _ChatScreenState extends State<ChatScreen> {
                 Navigator.pop(dialogContext);
                 final success = await ApiService.unblockUser(widget.friendId);
                 if (success && mounted) {
+                  // 즉시 로컬 상태 업데이트하여 UI 활성화
+                  setState(() {
+                    _iBlockedThem = false;
+                    _isBlocked = false;
+                  });
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('${widget.friendName}님의 차단을 해제했습니다')),
                   );
-                  await _checkBlockStatus();
+                  // 서버 상태 확인 (비동기로 실행되지만 이미 UI는 활성화됨)
+                  _checkBlockStatus();
                 }
               },
               child: const Text('해제', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
@@ -1479,10 +1505,16 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (_reportId != null) {
                   final success = await ApiService.cancelReport(_reportId!);
                   if (success && mounted) {
+                    // 즉시 로컬 상태 업데이트하여 UI 활성화
+                    setState(() {
+                      _iReportedThem = false;
+                      _reportId = null;
+                    });
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('신고를 취소했습니다')),
                     );
-                    await _checkReportStatus();
+                    // 서버 상태 확인 (비동기로 실행되지만 이미 UI는 활성화됨)
+                    _checkReportStatus();
                   }
                 }
               },
