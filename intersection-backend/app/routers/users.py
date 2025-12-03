@@ -6,7 +6,7 @@ from sqlalchemy import or_
 
 # 🔥 스키마 및 모델 임포트
 from ..schemas import UserCreate, UserRead, UserUpdate, Token, NotificationRead
-from ..models import User, Post, Notification, UserBlock, UserReport  # ✅ UserBlock, UserReport 추가
+from ..models import User, Post, Notification, UserBlock, UserReport
 from ..db import engine
 from ..auth import get_password_hash, verify_password, create_access_token, decode_access_token
 from fastapi.security import OAuth2PasswordBearer
@@ -132,27 +132,15 @@ def get_my_info(current_user: User = Depends(get_current_user)):
 
 @router.get("/users/me/recommended", response_model=list[UserRead])
 def recommended(current_user: User = Depends(get_current_user)):
+    """
+    추천 친구 목록 조회
+    - 차단/신고 필터링은 services.py 내부에서 이미 처리되어 나옵니다.
+    - 여기서는 그냥 받아서 넘겨주기만 하면 됩니다. (중복 제거됨)
+    """
     with Session(engine) as session:
-        # ✅ 차단한 사용자 ID 목록 조회
-        blocked_statement = select(UserBlock.blocked_user_id).where(
-            UserBlock.user_id == current_user.id
-        )
-        blocked_ids = set([row for row in session.exec(blocked_statement).all()])
-        
-        # ✅ 신고한 사용자 ID 목록 조회
-        reported_statement = select(UserReport.reported_user_id).where(
-            UserReport.reporter_id == current_user.id,
-            UserReport.status == "pending"
-        )
-        reported_ids = set([row for row in session.exec(reported_statement).all()])
-        
-        # ✅ 제외할 사용자 ID 합치기
-        excluded_ids = blocked_ids | reported_ids
-        
-        # 추천 친구 서비스 호출
+        # ✅ await 없이 일반 함수로 호출 (Redis 없음)
         friends = get_recommended_friends(session, current_user)
         
-        # ✅ 차단/신고한 사용자 제외
         return [
             UserRead(
                 id=u.id, 
@@ -162,7 +150,7 @@ def recommended(current_user: User = Depends(get_current_user)):
                 school_name=u.school_name,
                 profile_image=u.profile_image,
                 background_image=u.background_image
-            ) for u in friends if u.id not in excluded_ids  # ✅ 필터링 추가
+            ) for u in friends
         ]
 
 
@@ -251,7 +239,7 @@ def get_my_notifications(current_user: User = Depends(get_current_user)):
                 id=notif.id,
                 sender_id=notif.sender_id,
                 sender_name=sender_name,
-                sender_profile_image=sender.profile_image, # 보낸 사람 프사
+                sender_profile_image=sender.profile_image, 
                 type=notif.type,
                 message=notif.message,
                 related_post_id=notif.related_post_id,
@@ -260,12 +248,11 @@ def get_my_notifications(current_user: User = Depends(get_current_user)):
             ))
             
         return notif_list
-    
+
+
 # ------------------------------------------------------
-
-# 기존 import 아래에 추가할 것 없음
-# 맨 아래나 적절한 위치에 이 함수를 추가하세요.
-
+# 🔍 유저 검색 API (신규 추가됨)
+# ------------------------------------------------------
 @router.get("/users/search", response_model=List[UserRead])
 def search_users(
     keyword: str, 
@@ -285,7 +272,7 @@ def search_users(
             )
         ).where(User.id != current_user.id)  # 나 자신은 검색 제외
         
-        # (선택) 차단한 유저 제외 로직을 여기에 추가할 수도 있습니다.
+        # 차단한 유저 제외가 필요하면 여기에 추가
         
         results = session.exec(statement).limit(20).all() # 최대 20명만
         
