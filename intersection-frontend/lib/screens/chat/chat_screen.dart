@@ -7,6 +7,15 @@ import '../../services/api_service.dart';
 import '../../data/app_state.dart';
 import '../../config/api_config.dart';
 import '../friends/friend_profile_screen.dart';
+import 'utils/chat_formatters.dart';
+import 'widgets/status_banner.dart';
+import 'widgets/pinned_message_bar.dart';
+import 'widgets/message_input_field.dart';
+import 'widgets/chat_header.dart';
+import 'dialogs/block_dialogs.dart';
+import 'dialogs/report_dialogs.dart';
+import 'dialogs/leave_chat_dialog.dart';
+import 'dialogs/message_menu_dialog.dart';
 import 'dart:async';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:file_picker/file_picker.dart';
@@ -1198,6 +1207,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _showBlockedDialog() {
+    BlockDialogs.showBlockedDialog(context);
+  }
+
+  void _showBlockedDialogOld() {
     String message;
     final isReportedOrBlocked = _iReportedThem || _iBlockedThem || widget.iReportedThem;
     final isBlockedByThem = _theyBlockedMe || widget.theyBlockedMe;
@@ -1240,292 +1253,39 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: _isSearchMode
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(color: Colors.black87),
-                decoration: InputDecoration(
-                  hintText: '메시지 검색',
-                  hintStyle: TextStyle(color: Colors.grey.shade500),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                ),
-                onChanged: _filterMessages,
-              )
-            : GestureDetector(
-                onTap: () async {
-                  User? user;
-                  
-                  // 항상 API로 최신 사용자 정보 가져오기 (프로필 사진, 배경 이미지, 피드 이미지 포함)
-                  try {
-                    user = await ApiService.getUserById(widget.friendId);
-                    
-                    // 친구 목록에도 업데이트
-                    final index = AppState.friends.indexWhere((f) => f.id == widget.friendId);
-                    if (index != -1) {
-                      AppState.friends[index] = user;
-                    } else {
-                      // 친구 목록에 없으면 추가
-                      AppState.friends.add(user);
-                    }
-                  } catch (e) {
-                    debugPrint("사용자 정보 가져오기 실패: $e");
-                    // API 실패 시 친구 목록에서 찾기
-                    try {
-                      user = AppState.friends.firstWhere(
-                        (friend) => friend.id == widget.friendId,
-                      );
-                    } catch (e2) {
-                      // 친구 목록에도 없으면 기본 정보로 User 객체 생성
-                      user = User(
-                        id: widget.friendId,
-                        name: widget.friendName,
-                        nickname: null,
-                        birthYear: 0,
-                        gender: null,
-                        region: "",
-                        school: "",
-                        schoolType: null,
-                        admissionYear: null,
-                        profileImageUrl: widget.friendProfileImage,
-                        backgroundImageUrl: null,
-                        profileFeedImages: [],
-                      );
-                    }
-                  }
-                  
-                  if (mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => FriendProfileScreen(user: user!),
-                      ),
-                    );
-                  }
-                },
-                child: Row(
-          children: [
-                    widget.friendProfileImage != null
-                        ? CircleAvatar(
-                            radius: 16,
-                            backgroundImage: NetworkImage(
-                              "${ApiConfig.baseUrl}${widget.friendProfileImage}",
-                            ),
-                            onBackgroundImageError: (_, __) {},
-                          )
-                        : CircleAvatar(
-                            radius: 16,
-                            backgroundColor: const Color(0xFF3C7EFF),
-              child: Text(
-                widget.friendName.substring(0, 1),
-                              style: const TextStyle(
-                  fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                ),
-              ),
-            ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        widget.friendName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-          ],
-                ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        shadowColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            height: 1,
-            color: Colors.grey.shade200,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(_isSearchMode ? Icons.close : Icons.search),
-            onPressed: _toggleSearchMode,
-            tooltip: _isSearchMode ? '검색 닫기' : '검색',
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              if (value == 'block') {
-                _showBlockDialog();
-              } else if (value == 'unblock') {
-                _showUnblockDialog();
-              } else if (value == 'report') {
-                _showReportDialog();
-              } else if (value == 'unreport') {
-                _showUnreportDialog();
-              } else if (value == 'leave') {
-                _showLeaveChatDialog();
-              }
-            },
-            itemBuilder: (context) => [
-              // ✅ 신고당한 경우: 나가기만 가능
-              if (!widget.theyBlockedMe) ...[
-              if (!_theyBlockedMe && !_iBlockedThem && !_iReportedThem)
-                const PopupMenuItem(
-                  value: 'block',
-                  child: Row(
-                    children: [
-                      Icon(Icons.block, size: 20, color: Colors.red),
-                      SizedBox(width: 12),
-                      Text('차단하기'),
-                    ],
-                  ),
-                ),
-              if (_iBlockedThem)
-                const PopupMenuItem(
-                  value: 'unblock',
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle, size: 20, color: Colors.green),
-                      SizedBox(width: 12),
-                      Text('차단 해제'),
-                    ],
-                  ),
-                ),
-              if (!_theyBlockedMe && !_iReportedThem && !_iBlockedThem)
-                const PopupMenuItem(
-                  value: 'report',
-                  child: Row(
-                    children: [
-                      Icon(Icons.report, size: 20, color: Colors.orange),
-                      SizedBox(width: 12),
-                      Text('신고하기'),
-                    ],
-                  ),
-                ),
-              if (_iReportedThem)
-                const PopupMenuItem(
-                  value: 'unreport',
-                  child: Row(
-                    children: [
-                      Icon(Icons.undo, size: 20, color: Colors.blue),
-                      SizedBox(width: 12),
-                      Text('신고 취소'),
-                    ],
-                  ),
-                ),
-              ],
-              const PopupMenuItem(
-                value: 'leave',
-                child: Row(
-                  children: [
-                    Icon(Icons.exit_to_app, size: 20, color: Colors.grey),
-                    SizedBox(width: 12),
-                    Text('채팅방 나가기'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+      appBar: ChatHeader(
+        friendId: widget.friendId,
+        friendName: widget.friendName,
+        friendProfileImage: widget.friendProfileImage,
+        isSearchMode: _isSearchMode,
+        searchController: _searchController,
+        theyBlockedMe: _theyBlockedMe || widget.theyBlockedMe,
+        iBlockedThem: _iBlockedThem,
+        iReportedThem: _iReportedThem,
+        onToggleSearchMode: _toggleSearchMode,
+        onSearchChanged: _filterMessages,
+        onBlock: _showBlockDialog,
+        onUnblock: _showUnblockDialog,
+        onReport: _showReportDialog,
+        onUnreport: _showUnreportDialog,
+        onLeaveChat: _showLeaveChatDialog,
       ),
       body: Column(
         children: [
-          // ✅ 내가 신고/차단했을 때 배너
-          if (_iReportedThem || _iBlockedThem || widget.iReportedThem)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.orange.shade50,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    color: Colors.orange.shade700,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      "신고 또는 차단한 사용자입니다. 메시지를 보낼 수 없습니다.",
-                      style: TextStyle(
-                        color: Colors.orange.shade700,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          // 상태 배너
+          StatusBanner(
+            iReportedThem: _iReportedThem || widget.iReportedThem,
+            iBlockedThem: _iBlockedThem,
+            theyBlockedMe: _theyBlockedMe || widget.theyBlockedMe,
+            theyLeft: widget.theyLeft,
+          ),
 
-          // ✅ 신고/차단 당했을 때 배너
-          if (_theyBlockedMe || widget.theyBlockedMe)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.red.shade50,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    color: Colors.red.shade700,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      "상대방이 회원님을 신고 또는 차단하여 메시지를 보낼 수 없습니다. 채팅방을 나가주세요.",
-                      style: TextStyle(
-                        color: Colors.red.shade700,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          
-          // ✅ 상대방이 채팅방을 나간 경우 배너
-          if (widget.theyLeft && !(_iReportedThem || _iBlockedThem || widget.iReportedThem) && !(_theyBlockedMe || widget.theyBlockedMe))
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.grey.shade100,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.exit_to_app,
-                    color: Colors.grey.shade700,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      "상대방이 채팅방을 나갔습니다. 메시지를 보낼 수 없습니다.",
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // ✅ 고정된 메시지 표시 (한 줄에 1개만, 클릭 시 이전 고정 메시지로 순환하고 해당 메시지로 이동)
+          // 고정된 메시지 표시
           if (_pinnedMessages.isNotEmpty && !_isSearchMode)
-            GestureDetector(
+            PinnedMessageBar(
+              pinnedMessages: _pinnedMessages,
+              currentPinnedIndex: _currentPinnedIndex,
+              friendName: widget.friendName,
               onTap: () {
                 // 클릭 시 현재 표시된 고정 메시지로 이동
                 final currentMsg = _pinnedMessages[_currentPinnedIndex];
@@ -1536,72 +1296,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   _currentPinnedIndex = (_currentPinnedIndex + 1) % _pinnedMessages.length;
                 });
               },
-              child: Container(
-                height: 44,
-                width: double.infinity,
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.push_pin,
-                      size: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Builder(
-                        builder: (context) {
-                          final msg = _pinnedMessages[_currentPinnedIndex];
-                          final isMe = msg.senderId == AppState.currentUser?.id;
-                          
-                          // 메시지 내용 텍스트
-                          String messageText = msg.isImage 
-                              ? '📷 이미지'
-                              : msg.fileName != null
-                                  ? '📎 ${msg.fileName}'
-                                  : msg.content;
-                          
-                          return Row(
-                            children: [
-                              Text(
-                                '${isMe ? '나' : widget.friendName}: ',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade800,
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  messageText,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                    // 여러 개일 때만 화살표 표시
-                    if (_pinnedMessages.length > 1)
-                      Icon(
-                        Icons.chevron_right,
-                        size: 18,
-                        color: Colors.grey.shade500,
-                      ),
-                  ],
-                ),
-              ),
             ),
 
           Expanded(
@@ -1673,153 +1367,33 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
           ),
 
-          if (_isUploading)
-            Container(
-              padding: const EdgeInsets.all(12),
-              color: Colors.blue.shade50,
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  SizedBox(width: 12),
-                  Text('파일 업로드 중...', style: TextStyle(fontSize: 13)),
-                ],
-              ),
-            ),
-
-          if (_showEmojiPicker)
-            SizedBox(
-              height: 250,
-              child: EmojiPicker(
-                onEmojiSelected: (category, emoji) {
-                  setState(() {
-                    _messageController.text += emoji.emoji;
-                  });
-                },
-                config: const Config(
-                  height: 256,
-                  checkPlatformCompatibility: true,
-                ),
-              ),
-            ),
-
           Builder(
             builder: (context) {
               // 로컬 상태와 위젯 상태를 모두 확인
               final isBlockedForInput = _iReportedThem || _iBlockedThem || widget.iReportedThem || _theyBlockedMe || widget.theyBlockedMe || widget.theyLeft;
               
-              return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                    if (!isBlockedForInput)
-                  IconButton(
-                    icon: Icon(
-                      _showEmojiPicker 
-                          ? Icons.keyboard 
-                          : Icons.emoji_emotions_outlined,
-                      color: _showEmojiPicker ? Colors.blue : Colors.grey,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _showEmojiPicker = !_showEmojiPicker;
-                      });
-                      if (_showEmojiPicker) {
-                        FocusScope.of(context).unfocus();
-                      }
-                    },
-                  ),
-                if (!isBlockedForInput)
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline, color: Colors.blue),
-                    onPressed: _isUploading ? null : _showAttachmentOptions,
-                  ),
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    enabled: !isBlockedForInput && !_isUploading,
-                    decoration: InputDecoration(
-                      hintText: _isUploading
-                          ? "파일 업로드 중..."
-                          : isBlockedForInput
-                          ? "메시지를 보낼 수 없습니다"
-                          : "메시지를 입력하세요...",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      disabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: const BorderSide(color: Colors.blue),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                    ),
-                    maxLines: null,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _sendMessage(),
-                    onTap: () {
-                      if (_showEmojiPicker) {
-                        setState(() {
-                          _showEmojiPicker = false;
-                        });
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: _isSending || isBlockedForInput || _isUploading ? null : _sendMessage,
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: _isSending || isBlockedForInput || _isUploading ? Colors.grey : Colors.blue,
-                      shape: BoxShape.circle,
-                    ),
-                    child: _isSending || _isUploading
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Icon(
-                            Icons.send,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                  ),
-                ),
-              ],
-            ),
-          );
+              return MessageInputField(
+                messageController: _messageController,
+                showEmojiPicker: _showEmojiPicker,
+                isBlockedForInput: isBlockedForInput,
+                isUploading: _isUploading,
+                isSending: _isSending,
+                onToggleEmojiPicker: () {
+                  setState(() {
+                    _showEmojiPicker = !_showEmojiPicker;
+                  });
+                  if (_showEmojiPicker) {
+                    FocusScope.of(context).unfocus();
+                  }
+                },
+                onShowAttachmentOptions: _showAttachmentOptions,
+                onSendMessage: _sendMessage,
+                onEmojiSelected: (emoji) {
+                  setState(() {
+                    _messageController.text += emoji;
+                  });
+                },
+              );
             },
           ),
         ],
@@ -1869,13 +1443,18 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     final isMe = message.senderId == AppState.currentUser?.id;
-    final time = _formatTime(message.createdAt);
+    final time = ChatFormatters.formatTime(message.createdAt);
 
     return Padding(
       key: key,
       padding: const EdgeInsets.only(bottom: 12),
       child: GestureDetector(
-        onLongPress: () => _showPinMenu(message),
+        onLongPress: () => MessageMenuDialog.showPinMenu(
+          context,
+          message,
+          widget.roomId,
+          () => _loadMessages(showLoading: false),
+        ),
       child: Row(
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -2072,122 +1651,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // 메시지 메뉴 표시 (복사, 고정)
-  void _showPinMenu(ChatMessage message) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 복사하기
-            ListTile(
-              leading: const Icon(Icons.copy, color: Colors.blue),
-              title: const Text('복사하기'),
-              onTap: () async {
-                Navigator.pop(context);
-                await _copyMessage(message);
-              },
-            ),
-            // 복사하고 고정하기
-            ListTile(
-              leading: const Icon(Icons.copy_all, color: Colors.green),
-              title: const Text('복사하고 고정하기'),
-              onTap: () async {
-                Navigator.pop(context);
-                await _copyAndPinMessage(message);
-              },
-            ),
-            const Divider(),
-            // 고정하기/고정 해제
-            ListTile(
-              leading: Icon(
-                message.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                color: Colors.blue.shade600,
-              ),
-              title: Text(message.isPinned ? '고정 해제' : '고정하기'),
-              onTap: () async {
-                Navigator.pop(context);
-                final success = await ApiService.togglePinMessage(widget.roomId, message.id);
-                if (success) {
-                  _loadMessages(showLoading: false);
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  // 메시지 복사
-  Future<void> _copyMessage(ChatMessage message) async {
-    String textToCopy = message.content;
-    
-    // 이미지나 파일인 경우 메시지 타입 표시
-    if (message.isImage) {
-      textToCopy = '[이미지] ${message.content != "[이미지]" ? message.content : ""}';
-    } else if (message.fileName != null) {
-      textToCopy = '[파일] ${message.fileName}\n${message.content}';
-    }
-    
-    await Clipboard.setData(ClipboardData(text: textToCopy));
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('메시지가 복사되었습니다'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  // 메시지 복사하고 고정하기
-  Future<void> _copyAndPinMessage(ChatMessage message) async {
-    // 먼저 복사
-    await _copyMessage(message);
-    
-    // 고정되지 않은 경우에만 고정
-    if (!message.isPinned) {
-      final success = await ApiService.togglePinMessage(widget.roomId, message.id);
-      if (success) {
-        _loadMessages(showLoading: false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('메시지가 복사되었고 고정되었습니다'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('메시지가 복사되었습니다 (이미 고정된 메시지입니다)'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    }
-  }
-
-  String _formatTime(String isoString) {
-    try {
-      final dateTime = DateTime.parse(isoString);
-      final hour = dateTime.hour.toString().padLeft(2, '0');
-      final minute = dateTime.minute.toString().padLeft(2, '0');
-      return "$hour:$minute";
-    } catch (e) {
-      return "";
-    }
-  }
 
   // 나머지 다이얼로그 메서드들은 동일하므로 생략...
   // (기존 코드 그대로 사용)
@@ -2326,138 +1790,44 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _showLeaveChatDialog() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.exit_to_app, color: Colors.orange, size: 24),
-              SizedBox(width: 8),
-              Text('채팅방 나가기'),
-            ],
-          ),
-          content: const Text(
-            '채팅방을 나가시겠습니까?\n\n나가면:\n• 채팅방 목록에서 사라집니다\n• 상대방에게 나간 사실이 알려집니다\n• 다시 들어올 수 없습니다',
-            style: TextStyle(fontSize: 14, height: 1.5),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-                final success = await ApiService.deleteChatRoom(widget.roomId);
-                if (success && mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('채팅방을 나갔습니다')),
-                  );
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('나가기', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
+    LeaveChatDialog.showLeaveChatDialog(
+      context,
+      widget.roomId,
+      () {
+        Navigator.pop(context);
       },
     );
   }
 
   void _showUnblockDialog() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 24),
-              SizedBox(width: 8),
-              Text('차단 해제'),
-            ],
-          ),
-          content: Text(
-            '${widget.friendName}님의 차단을 해제하시겠습니까?\n\n해제하면:\n• 다시 메시지를 주고받을 수 있습니다\n• 친구 목록에 다시 추가할 수 있습니다\n• 게시글을 볼 수 있습니다',
-            style: const TextStyle(fontSize: 14, height: 1.5),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-                final success = await ApiService.unblockUser(widget.friendId);
-                if (success && mounted) {
-                  // 즉시 로컬 상태 업데이트하여 UI 활성화
-                  setState(() {
-                    _iBlockedThem = false;
-                    _isBlocked = false;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${widget.friendName}님의 차단을 해제했습니다')),
-                  );
-                  // 서버 상태 확인 (비동기로 실행되지만 이미 UI는 활성화됨)
-                  _checkBlockStatus();
-                }
-              },
-              child: const Text('해제', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
+    BlockDialogs.showUnblockDialog(
+      context,
+      widget.friendName,
+      widget.friendId,
+      () {
+        // 즉시 로컬 상태 업데이트하여 UI 활성화
+        setState(() {
+          _iBlockedThem = false;
+          _isBlocked = false;
+        });
+        // 서버 상태 확인 (비동기로 실행되지만 이미 UI는 활성화됨)
+        _checkBlockStatus();
       },
     );
   }
 
   void _showUnreportDialog() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.undo, color: Colors.blue, size: 24),
-              SizedBox(width: 8),
-              Text('신고 취소'),
-            ],
-          ),
-          content: const Text(
-            '신고를 취소하시겠습니까?\n\n관리자 검토가 진행 중인 경우\n취소할 수 없습니다.',
-            style: TextStyle(fontSize: 14, height: 1.5),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('닫기'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-                if (_reportId != null) {
-                  final success = await ApiService.cancelReport(_reportId!);
-                  if (success && mounted) {
-                    // 즉시 로컬 상태 업데이트하여 UI 활성화
-                    setState(() {
-                      _iReportedThem = false;
-                      _reportId = null;
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('신고를 취소했습니다')),
-                    );
-                    // 서버 상태 확인 (비동기로 실행되지만 이미 UI는 활성화됨)
-                    _checkReportStatus();
-                  }
-                }
-              },
-              child: const Text('취소하기', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
+    ReportDialogs.showUnreportDialog(
+      context,
+      _reportId,
+      () {
+        // 즉시 로컬 상태 업데이트하여 UI 활성화
+        setState(() {
+          _iReportedThem = false;
+          _reportId = null;
+        });
+        // 서버 상태 확인 (비동기로 실행되지만 이미 UI는 활성화됨)
+        _checkReportStatus();
       },
     );
   }
