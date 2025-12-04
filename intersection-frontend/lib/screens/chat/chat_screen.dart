@@ -60,6 +60,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isUserScrolling = false;  // 사용자가 스크롤 중인지 여부
   double _lastScrollPosition = 0;  // 마지막 스크롤 위치
   bool _isSending = false;
+  final Map<int, Timer> _messageTimers = {};  // 메시지별 타이머 (60초 카운트다운)
+  final Map<int, int> _messageCountdowns = {};  // 메시지별 남은 시간 (초)
   bool _isBlocked = false;
   bool _iBlockedThem = false;
   bool _theyBlockedMe = false;
@@ -97,8 +99,15 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _pollingTimer?.cancel();
     _messageController.dispose();
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _searchController.dispose();
+    // 모든 메시지 타이머 취소
+    for (var timer in _messageTimers.values) {
+      timer.cancel();
+    }
+    _messageTimers.clear();
+    _messageCountdowns.clear();
     super.dispose();
   }
 
@@ -268,6 +277,8 @@ class _ChatScreenState extends State<ChatScreen> {
             _isUploading = false;
           });
           _scrollToBottom();
+          // 60초 카운트다운 시작
+          _startMessageCountdown(newMessage.id);
         }
       } else {
         // 모바일: File 사용
@@ -293,6 +304,8 @@ class _ChatScreenState extends State<ChatScreen> {
             _isUploading = false;
           });
           _scrollToBottom();
+          // 60초 카운트다운 시작
+          _startMessageCountdown(newMessage.id);
         }
       }
     } catch (e) {
@@ -350,6 +363,8 @@ class _ChatScreenState extends State<ChatScreen> {
           _isUploading = false;
         });
         _scrollToBottom();
+        // 60초 카운트다운 시작
+        _startMessageCountdown(newMessage.id);
       }
     } catch (e) {
       debugPrint("사진 전송 오류: $e");
@@ -475,6 +490,8 @@ class _ChatScreenState extends State<ChatScreen> {
             _isUploading = false;
           });
           _scrollToBottom();
+          // 60초 카운트다운 시작
+          _startMessageCountdown(newMessage.id);
           
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('${platformFile.name} 전송 완료')),
@@ -492,6 +509,8 @@ class _ChatScreenState extends State<ChatScreen> {
             _isUploading = false;
           });
           _scrollToBottom();
+          // 60초 카운트다운 시작
+          _startMessageCountdown(newMessage.id);
           
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('${platformFile.name} 전송 완료')),
@@ -576,6 +595,118 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
     );
+  }
+
+  /// 메시지 60초 카운트다운 시작
+  void _startMessageCountdown(int messageId) {
+    // 기존 타이머가 있으면 취소
+    _messageTimers[messageId]?.cancel();
+    
+    // 60초로 초기화하고 즉시 UI 업데이트
+    if (mounted) {
+      setState(() {
+        _messageCountdowns[messageId] = 60;
+      });
+    }
+    
+    // 1초마다 카운트다운
+    _messageTimers[messageId] = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (_messageCountdowns.containsKey(messageId)) {
+            _messageCountdowns[messageId] = _messageCountdowns[messageId]! - 1;
+            
+            // 0초가 되면 타이머 취소 및 카운트다운 제거
+            if (_messageCountdowns[messageId]! <= 0) {
+              timer.cancel();
+              _messageTimers.remove(messageId);
+              _messageCountdowns.remove(messageId);
+            }
+          } else {
+            timer.cancel();
+            _messageTimers.remove(messageId);
+          }
+        });
+      } else {
+        timer.cancel();
+        _messageTimers.remove(messageId);
+        _messageCountdowns.remove(messageId);
+      }
+    });
+  }
+
+  /// 메시지 삭제
+  Future<void> _deleteMessage(int messageId) async {
+    // 확인 다이얼로그
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline, color: Colors.red, size: 24),
+            SizedBox(width: 8),
+            Text('메시지 삭제'),
+          ],
+        ),
+        content: const Text(
+          '이 메시지를 삭제하시겠습니까?',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              '삭제',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) return;
+
+    try {
+      final success = await ApiService.deleteChatMessage(widget.roomId, messageId);
+      
+      if (success && mounted) {
+        // 타이머 취소
+        _messageTimers[messageId]?.cancel();
+        _messageTimers.remove(messageId);
+        _messageCountdowns.remove(messageId);
+        
+        // 메시지 목록에서 제거
+        setState(() {
+          _messages.removeWhere((m) => m.id == messageId);
+          _updateFilteredMessages();
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('메시지가 삭제되었습니다'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("메시지 삭제 오류: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('메시지 삭제 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   /// 내 전화번호 전송
@@ -685,6 +816,8 @@ class _ChatScreenState extends State<ChatScreen> {
           _isSending = false;
         });
         _scrollToBottom();
+        // 60초 카운트다운 시작
+        _startMessageCountdown(newMessage.id);
       }
     } catch (e) {
       debugPrint("전화번호 전송 오류: $e");
@@ -939,6 +1072,8 @@ class _ChatScreenState extends State<ChatScreen> {
           _isSending = false;
         });
         _scrollToBottom();
+        // 60초 카운트다운 시작
+        _startMessageCountdown(newMessage.id);
       }
     } catch (e) {
       debugPrint("메시지 전송 오류: $e");
@@ -1746,7 +1881,36 @@ class _ChatScreenState extends State<ChatScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (isMe) ...[
-            if (!message.isRead)
+            // 60초 카운트다운 중이면 삭제 버튼과 카운트다운 표시
+            if (_messageCountdowns.containsKey(message.id) && _messageCountdowns[message.id]! > 0)
+              Padding(
+                padding: const EdgeInsets.only(right: 4, bottom: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: Colors.red.shade400,
+                      ),
+                      onPressed: () => _deleteMessage(message.id),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${_messageCountdowns[message.id]}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (!message.isRead)
               Padding(
                 padding: const EdgeInsets.only(right: 4, bottom: 2),
                 child: Text(

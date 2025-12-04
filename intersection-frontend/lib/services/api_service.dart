@@ -492,6 +492,21 @@ class ApiService {
     }
   }
 
+  // ----------------------------------------------------
+  // 메시지 삭제
+  // ----------------------------------------------------
+  static Future<bool> deleteChatMessage(int roomId, int messageId) async {
+    final url =
+        Uri.parse("${ApiConfig.baseUrl}/chat/rooms/$roomId/messages/$messageId");
+
+    final response = await http.delete(
+      url,
+      headers: _headers(json: false),
+    );
+
+    return response.statusCode == 200;
+  }
+
   // ========================================
   // 파일 업로드 (공용)
   // ========================================
