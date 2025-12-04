@@ -130,6 +130,42 @@ def get_my_info(current_user: User = Depends(get_current_user)):
         )
 
 
+@router.get("/users/{user_id}", response_model=UserRead)
+def get_user_by_id_api(
+    user_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    특정 사용자 정보 조회 API (피드 이미지 포함)
+    """
+    with Session(engine) as session:
+        user = get_user_by_id(session, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # 해당 사용자의 게시글 이미지들 (피드용)
+        statement = (
+            select(Post)
+            .where(Post.author_id == user_id)
+            .where(Post.image_url != None)
+            .order_by(desc(Post.created_at))
+        )
+        user_posts = session.exec(statement).all()
+        feed_images_list = [post.image_url for post in user_posts if post.image_url]
+        
+        return UserRead(
+            id=user.id, 
+            name=user.name, 
+            nickname=user.nickname,
+            birth_year=user.birth_year, 
+            region=user.region, 
+            school_name=user.school_name,
+            profile_image=user.profile_image,
+            background_image=user.background_image,
+            feed_images=feed_images_list
+        )
+
+
 @router.get("/users/me/recommended", response_model=list[UserRead])
 def recommended(current_user: User = Depends(get_current_user)):
     """

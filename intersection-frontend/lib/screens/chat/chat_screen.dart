@@ -991,28 +991,55 @@ class _ChatScreenState extends State<ChatScreen> {
                 onChanged: _filterMessages,
               )
             : GestureDetector(
-                onTap: () {
-                  // 채팅방 정보로 User 객체 생성
-                  final user = User(
-                    id: widget.friendId,
-                    name: widget.friendName,
-                    nickname: null,
-                    birthYear: 0,
-                    gender: null,
-                    region: "",
-                    school: "",
-                    schoolType: null,
-                    admissionYear: null,
-                    profileImageUrl: widget.friendProfileImage,
-                    backgroundImageUrl: null,
-                    profileFeedImages: [],
-                  );
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => FriendProfileScreen(user: user),
-                    ),
-                  );
+                onTap: () async {
+                  User? user;
+                  
+                  // 항상 API로 최신 사용자 정보 가져오기 (프로필 사진, 배경 이미지, 피드 이미지 포함)
+                  try {
+                    user = await ApiService.getUserById(widget.friendId);
+                    
+                    // 친구 목록에도 업데이트
+                    final index = AppState.friends.indexWhere((f) => f.id == widget.friendId);
+                    if (index != -1) {
+                      AppState.friends[index] = user;
+                    } else {
+                      // 친구 목록에 없으면 추가
+                      AppState.friends.add(user);
+                    }
+                  } catch (e) {
+                    debugPrint("사용자 정보 가져오기 실패: $e");
+                    // API 실패 시 친구 목록에서 찾기
+                    try {
+                      user = AppState.friends.firstWhere(
+                        (friend) => friend.id == widget.friendId,
+                      );
+                    } catch (e2) {
+                      // 친구 목록에도 없으면 기본 정보로 User 객체 생성
+                      user = User(
+                        id: widget.friendId,
+                        name: widget.friendName,
+                        nickname: null,
+                        birthYear: 0,
+                        gender: null,
+                        region: "",
+                        school: "",
+                        schoolType: null,
+                        admissionYear: null,
+                        profileImageUrl: widget.friendProfileImage,
+                        backgroundImageUrl: null,
+                        profileFeedImages: [],
+                      );
+                    }
+                  }
+                  
+                  if (mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FriendProfileScreen(user: user!),
+                      ),
+                    );
+                  }
                 },
                 child: Row(
           children: [

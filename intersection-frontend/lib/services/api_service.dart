@@ -108,6 +108,37 @@ class ApiService {
   }
 
   // ----------------------------------------------------
+  // 특정 사용자 정보 가져오기 (피드 이미지 포함)
+  // ----------------------------------------------------
+  static Future<User> getUserById(int userId) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/users/$userId");
+    final response = await http.get(url, headers: _headers(json: false));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+
+      return User(
+        id: data["id"],
+        name: data["name"] ?? "",
+        nickname: data["nickname"],
+        birthYear: data["birth_year"] ?? 0,
+        gender: data["gender"],
+        region: data["region"] ?? "",
+        school: data["school_name"] ?? "",
+        schoolType: data["school_type"],
+        admissionYear: data["admission_year"],
+        profileImageUrl: data["profile_image"],
+        backgroundImageUrl: data["background_image"],
+        profileFeedImages: (data["feed_images"] != null)
+            ? List<String>.from(data["feed_images"])
+            : [],
+      );
+    } else {
+      throw Exception("사용자 정보 불러오기 실패: ${response.body}");
+    }
+  }
+
+  // ----------------------------------------------------
   // 내 정보 업데이트
   // ----------------------------------------------------
   static Future<Map<String, dynamic>> updateMyInfo(

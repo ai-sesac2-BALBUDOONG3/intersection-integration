@@ -1,62 +1,60 @@
-feat: 채팅 화면에서 신고/차단 시 즉시 UI 반영 및 해제 시 활성화 기능 구현
+# 커밋 메시지
+
+```
+feat: 채팅 고정 메시지 기능 및 UI 개선
 
 ## 주요 변경사항
 
-### 프론트엔드 (Flutter)
+### 백엔드
+- 채팅방 및 메시지 고정 기능 추가
+  - ChatRoom, ChatMessage 모델에 is_pinned 필드 추가
+  - 고정/고정 해제 API 엔드포인트 추가
+  - 고정된 메시지는 원래 위치에 유지 (최상단으로 이동하지 않음)
+- 데이터베이스 마이그레이션 스크립트 추가
 
-#### 채팅 화면 신고/차단 즉시 반영 기능
-- 신고하기 또는 차단하기 버튼 클릭 시 즉시 UI 업데이트
-  - 입력 필드와 전송 버튼이 즉시 비활성화됨
-  - "신고 또는 차단한 사용자입니다. 메시지를 보낼 수 없습니다." 배너가 즉시 표시됨
-  - 다른 페이지로 이동하지 않아도 상태가 바로 반영됨
+### 프론트엔드
+- 채팅 고정 메시지 기능 구현
+  - 채팅방 고정: 채팅 목록에서 고정 버튼으로 고정/해제
+  - 메시지 고정: 메시지 길게 누르기로 고정/해제
+  - 고정된 메시지가 상단에 한 줄로 표시 (카카오톡 스타일)
+  - 고정 메시지 클릭 시 해당 메시지로 이동 및 순환
+- 채팅 UI 개선
+  - 채팅 목록 검색 기능 추가 (사용자 이름, 메시지 내용 검색)
+  - 채팅방 검색 기능 추가
+  - 검색 결과 없을 때 "검색 결과가 없어요" 메시지 표시
+  - 프로필 클릭 시 사용자 프로필로 이동
+  - 상단 헤더 디자인 개선
+- 메시지 복사 기능 추가
+  - 메시지 길게 누르기 메뉴에 복사 옵션 추가
+  - 복사하고 고정하기 옵션 추가
+- 자동 스크롤 개선
+  - 사용자가 스크롤을 올려서 보고 있을 때 자동으로 맨 밑으로 이동하지 않도록 수정
+  - 맨 밑 근처에 있을 때만 새 메시지 수신 시 자동 스크롤
 
-- 차단 해제 및 신고 취소 시 즉시 활성화
-  - 차단 해제 버튼 클릭 시 입력 필드와 전송 버튼이 즉시 활성화됨
-  - 신고 취소 버튼 클릭 시 입력 필드와 전송 버튼이 즉시 활성화됨
-  - 서버 응답을 기다리지 않고 로컬 상태를 먼저 업데이트하여 빠른 반응성 제공
+## 수정된 파일
 
-#### 상태 관리 개선
-- 로컬 상태 변수와 위젯 초기값을 통합하여 사용
-  - `_iReportedThem`, `_iBlockedThem` 로컬 상태 변수 추가
-  - 위젯의 초기값(`widget.iReportedThem`, `widget.theyBlockedMe`)과 로컬 상태를 함께 확인
-  - `initState`에서 위젯 초기값으로 로컬 상태 초기화
+### 백엔드
+- app/models.py: ChatRoom, ChatMessage에 is_pinned 필드 추가
+- app/schemas.py: ChatRoomRead, ChatMessageRead에 is_pinned 필드 추가
+- app/routers/chat.py: 고정/고정 해제 API 엔드포인트 추가, 정렬 로직 수정
+- migration_add_is_pinned.sql: 데이터베이스 마이그레이션 스크립트
 
-- Builder 위젯을 사용하여 변수 선언 스코프 분리
-  - `isBlockedForInput` 변수를 Builder 내부에서 선언하여 컴파일 에러 해결
-  - 입력 필드, 전송 버튼, 이모지/첨부 버튼의 활성화 상태를 통합 관리
+### 프론트엔드
+- lib/models/chat_room.dart: isPinned 필드 추가
+- lib/models/chat_message.dart: isPinned 필드 추가
+- lib/services/api_service.dart: 고정 관련 API 메서드 추가
+- lib/screens/chat/chat_list_screen.dart: 고정 기능, 검색 기능 추가
+- lib/screens/chat/chat_screen.dart: 고정 메시지 표시, 검색 기능, 복사 기능 추가
+- lib/screens/main_tab_screen.dart: 채팅 탭 AppBar 중복 제거
 
-#### UI/UX 개선
-- 신고/차단 상태에 따른 배너 표시
-  - 내가 신고/차단한 경우: 주황색 배너 표시
-  - 상대방이 나를 신고/차단한 경우: 빨간색 배너 표시
-  - 상대방이 채팅방을 나간 경우: 회색 배너 표시
+## 데이터베이스 마이그레이션 필요
 
-- 입력 필드 및 버튼 상태 관리
-  - 신고/차단 시: 입력 필드 비활성화, 전송 버튼 비활성화, 이모지/첨부 버튼 숨김
-  - 해제 시: 모든 입력 요소 즉시 활성화
+다음 SQL을 실행하여 데이터베이스 스키마를 업데이트하세요:
 
-## 기술적 세부사항
+```sql
+ALTER TABLE chatroom ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
+ALTER TABLE chatmessage ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE;
+```
 
-### 상태 업데이트 흐름
-1. 신고/차단 시:
-   - API 호출 성공 → `setState`로 로컬 상태 즉시 업데이트 → UI 즉시 반영
-   - `_checkBlockStatus()` / `_checkReportStatus()` 비동기 호출로 서버 상태 동기화
-
-2. 해제 시:
-   - API 호출 성공 → `setState`로 로컬 상태 즉시 업데이트 → UI 즉시 활성화
-   - `_checkBlockStatus()` / `_checkReportStatus()` 비동기 호출로 서버 상태 동기화
-
-### 코드 구조
-- `_showBlockDialog()`: 차단 다이얼로그 및 상태 업데이트
-- `_showUnblockDialog()`: 차단 해제 다이얼로그 및 상태 업데이트
-- `_showReportDialog()`: 신고 다이얼로그 및 상태 업데이트
-- `_showUnreportDialog()`: 신고 취소 다이얼로그 및 상태 업데이트
-- `_sendMessage()`: 메시지 전송 전 차단 상태 확인
-
-## 개선 효과
-- 사용자가 신고/차단 버튼을 누르면 즉시 피드백을 받을 수 있어 사용자 경험 향상
-- 페이지 이동 없이 상태 변경이 반영되어 더 직관적인 인터페이스 제공
-- 차단 해제/신고 취소 시 즉시 채팅 가능하여 불필요한 대기 시간 제거
-
-## 관련 파일
-- intersection-frontend/lib/screens/chat/chat_screen.dart
+또는 migration_add_is_pinned.sql 파일을 실행하세요.
+```

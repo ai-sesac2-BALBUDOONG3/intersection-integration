@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intersection/models/user.dart';
 import 'package:intersection/screens/common/image_viewer.dart';
 import 'package:intersection/services/api_service.dart';
+import 'package:intersection/config/api_config.dart';
 
 class FriendProfileScreen extends StatefulWidget {
   final User user;
@@ -17,6 +18,46 @@ class FriendProfileScreen extends StatefulWidget {
 }
 
 class _FriendProfileScreenState extends State<FriendProfileScreen> {
+  bool _iBlockedThem = false;
+  bool _iReportedThem = false;
+  int? _reportId;
+  bool _isLoadingStatus = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBlockAndReportStatus();
+  }
+
+  Future<void> _checkBlockAndReportStatus() async {
+    try {
+      // 차단 상태 확인
+      final blockStatus = await ApiService.checkIfBlocked(widget.user.id);
+      final iBlockedThem = blockStatus['i_blocked_them'] ?? false;
+      
+      // 신고 상태 확인
+      final reportStatus = await ApiService.checkMyReport(widget.user.id);
+      final iReportedThem = reportStatus['has_reported'] ?? false;
+      final reportId = reportStatus['report_id'];
+      
+      if (mounted) {
+        setState(() {
+          _iBlockedThem = iBlockedThem;
+          _iReportedThem = iReportedThem;
+          _reportId = reportId;
+          _isLoadingStatus = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("차단/신고 상태 확인 오류: $e");
+      if (mounted) {
+        setState(() {
+          _isLoadingStatus = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
@@ -32,32 +73,80 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
             onSelected: (value) {
               if (value == 'block') {
                 _showBlockDialog();
+              } else if (value == 'unblock') {
+                _showUnblockDialog();
               } else if (value == 'report') {
                 _showReportDialog();
+              } else if (value == 'unreport') {
+                _showUnreportDialog();
               }
             },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'block',
-                child: Row(
-                  children: [
-                    Icon(Icons.block, size: 20, color: Colors.red),
-                    SizedBox(width: 12),
-                    Text('차단하기'),
-                  ],
+            itemBuilder: (context) {
+              if (_isLoadingStatus) {
+                return [
+                  const PopupMenuItem(
+                    value: 'loading',
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ];
+              }
+              
+              // 차단한 경우: 차단 해제 버튼만
+              if (_iBlockedThem) {
+                return [
+                  const PopupMenuItem(
+                    value: 'unblock',
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, size: 20, color: Colors.green),
+                        SizedBox(width: 12),
+                        Text('차단 해제'),
+                      ],
+                    ),
+                  ),
+                ];
+              }
+              
+              // 신고한 경우: 신고 해제 버튼만
+              if (_iReportedThem) {
+                return [
+                  const PopupMenuItem(
+                    value: 'unreport',
+                    child: Row(
+                      children: [
+                        Icon(Icons.undo, size: 20, color: Colors.blue),
+                        SizedBox(width: 12),
+                        Text('신고 취소'),
+                      ],
+                    ),
+                  ),
+                ];
+              }
+              
+              // 둘 다 안 한 경우: 차단하기, 신고하기 버튼
+              return [
+                const PopupMenuItem(
+                  value: 'block',
+                  child: Row(
+                    children: [
+                      Icon(Icons.block, size: 20, color: Colors.red),
+                      SizedBox(width: 12),
+                      Text('차단하기'),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuItem(
-                value: 'report',
-                child: Row(
-                  children: [
-                    Icon(Icons.report, size: 20, color: Colors.orange),
-                    SizedBox(width: 12),
-                    Text('신고하기'),
-                  ],
+                const PopupMenuItem(
+                  value: 'report',
+                  child: Row(
+                    children: [
+                      Icon(Icons.report, size: 20, color: Colors.orange),
+                      SizedBox(width: 12),
+                      Text('신고하기'),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ];
+            },
           ),
         ],
       ),
@@ -263,9 +352,16 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
   // 이미지 자동 구분 로더
   // ==========================
   ImageProvider _imageProvider(String path) {
+    // 절대 URL인 경우
     if (path.startsWith("http")) {
       return NetworkImage(path);
-    } else {
+    }
+    // 상대 경로인 경우 (/uploads/...)
+    else if (path.startsWith("/")) {
+      return NetworkImage("${ApiConfig.baseUrl}$path");
+    }
+    // 로컬 파일 경로인 경우
+    else {
       return FileImage(File(path));
     }
   }
@@ -304,6 +400,10 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                     await ApiService.blockUser(widget.user.id);
 
                 if (success && mounted) {
+                  setState(() {
+                    _iBlockedThem = true;
+                  });
+                  await _checkBlockAndReportStatus();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                         content: Text('${widget.user.name}님을 차단했습니다')),
@@ -434,6 +534,13 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
                     );
 
                     if (success && mounted) {
+                      // 신고 상태 다시 확인하여 reportId 가져오기
+                      final reportStatus = await ApiService.checkMyReport(widget.user.id);
+                      setState(() {
+                        _iReportedThem = true;
+                        _reportId = reportStatus['report_id'];
+                      });
+                      await _checkBlockAndReportStatus();
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('신고가 접수되었습니다. 검토 후 조치하겠습니다.'),
@@ -451,6 +558,105 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               ],
             );
           },
+        );
+      },
+    );
+  }
+
+  /// 차단 해제 다이얼로그
+  void _showUnblockDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            '차단 해제',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            '${widget.user.name}님의 차단을 해제하시겠습니까?',
+            style: const TextStyle(fontSize: 14, height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+
+                final success = await ApiService.unblockUser(widget.user.id);
+
+                if (success && mounted) {
+                  setState(() {
+                    _iBlockedThem = false;
+                  });
+                  await _checkBlockAndReportStatus();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('${widget.user.name}님의 차단을 해제했습니다')),
+                  );
+                }
+              },
+              child: const Text(
+                '해제',
+                style: TextStyle(
+                    color: Colors.green, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// 신고 취소 다이얼로그
+  void _showUnreportDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.undo, color: Colors.blue, size: 24),
+              SizedBox(width: 8),
+              Text('신고 취소'),
+            ],
+          ),
+          content: const Text(
+            '신고를 취소하시겠습니까?\n\n관리자 검토가 진행 중인 경우\n취소할 수 없습니다.',
+            style: TextStyle(fontSize: 14, height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('닫기'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                if (_reportId != null) {
+                  final success = await ApiService.cancelReport(_reportId!);
+                  if (success && mounted) {
+                    setState(() {
+                      _iReportedThem = false;
+                      _reportId = null;
+                    });
+                    await _checkBlockAndReportStatus();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('신고를 취소했습니다')),
+                    );
+                  }
+                }
+              },
+              child: const Text('취소하기', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+            ),
+          ],
         );
       },
     );
