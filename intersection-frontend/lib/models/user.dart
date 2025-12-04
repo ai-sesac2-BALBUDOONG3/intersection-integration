@@ -11,6 +11,7 @@ class User {
   final String school;
   final String? schoolType;
   final int? admissionYear;
+  final String? phone;  // 전화번호
 
   // 기존 URL 방식
   String? profileImageUrl;
@@ -33,6 +34,7 @@ class User {
     required this.school,
     this.schoolType,
     this.admissionYear,
+    this.phone,
     this.profileImageUrl,
     this.backgroundImageUrl,
     this.profileImageBytes,
@@ -51,6 +53,7 @@ class User {
       school: json["school_name"] ?? json["school"] ?? "",
       schoolType: json["school_type"],
       admissionYear: json["admission_year"],
+      phone: json["phone"],
       profileImageUrl: json["profile_image"],
       backgroundImageUrl: json["background_image"],
       profileFeedImages: (json["profile_feed_images"] != null)

@@ -96,6 +96,7 @@ class ApiService {
         school: data["school_name"] ?? "",
         schoolType: data["school_type"],
         admissionYear: data["admission_year"],
+        phone: data["phone"],
         profileImageUrl: data["profile_image"],
         backgroundImageUrl: data["background_image"],
         profileFeedImages: (data["feed_images"] != null)
@@ -127,6 +128,7 @@ class ApiService {
         school: data["school_name"] ?? "",
         schoolType: data["school_type"],
         admissionYear: data["admission_year"],
+        phone: data["phone"],
         profileImageUrl: data["profile_image"],
         backgroundImageUrl: data["background_image"],
         profileFeedImages: (data["feed_images"] != null)

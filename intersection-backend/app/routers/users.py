@@ -124,6 +124,7 @@ def get_my_info(current_user: User = Depends(get_current_user)):
             birth_year=current_user.birth_year, 
             region=current_user.region, 
             school_name=current_user.school_name,
+            phone=current_user.phone,
             profile_image=current_user.profile_image,
             background_image=current_user.background_image,
             feed_images=feed_images_list
@@ -160,6 +161,7 @@ def get_user_by_id_api(
             birth_year=user.birth_year, 
             region=user.region, 
             school_name=user.school_name,
+            phone=user.phone,
             profile_image=user.profile_image,
             background_image=user.background_image,
             feed_images=feed_images_list

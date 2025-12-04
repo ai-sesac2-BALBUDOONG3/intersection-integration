@@ -560,6 +560,14 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.phone, color: Colors.purple),
+              title: const Text('내 번호 보내기'),
+              onTap: () {
+                Navigator.pop(context);
+                _sendPhoneNumber();
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.close, color: Colors.grey),
               title: const Text('취소'),
               onTap: () => Navigator.pop(context),
@@ -568,6 +576,128 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
     );
+  }
+
+  /// 내 전화번호 전송
+  Future<void> _sendPhoneNumber() async {
+    final currentUser = AppState.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('로그인이 필요합니다')),
+      );
+      return;
+    }
+
+    // 전화번호가 없으면 안내
+    if (currentUser.phone == null || currentUser.phone!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('등록된 전화번호가 없습니다')),
+      );
+      return;
+    }
+
+    // 확인 다이얼로그 표시
+    final shouldSend = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.phone, color: Colors.purple, size: 24),
+            SizedBox(width: 8),
+            Text('전화번호 전송'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${widget.friendName}님에게 내 전화번호를 보내시겠습니까?',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '이름: ${currentUser.name}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '전화번호: ${currentUser.phone}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              '전송',
+              style: TextStyle(
+                color: Colors.purple,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSend != true) return;
+
+    // 메시지 전송
+    final messageContent = '📱 ${currentUser.name}\n${currentUser.phone}';
+    
+    setState(() => _isSending = true);
+
+    try {
+      final newMessage = await ApiService.sendChatMessage(
+        widget.roomId,
+        messageContent,
+      );
+
+      if (mounted) {
+        setState(() {
+          _messages.add(newMessage);
+          _updateFilteredMessages();
+          _isSending = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      debugPrint("전화번호 전송 오류: $e");
+      if (mounted) {
+        setState(() => _isSending = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('전화번호 전송 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   /// 이미지 뷰어

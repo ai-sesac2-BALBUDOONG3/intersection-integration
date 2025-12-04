@@ -34,6 +34,7 @@ class UserRead(BaseModel):
     birth_year: Optional[int] = None
     region: Optional[str] = None
     school_name: Optional[str] = None
+    phone: Optional[str] = None  # 전화번호
 
     # 👇 [추가] 프로필/배경 이미지 URL 필드
     profile_image: Optional[str] = None
