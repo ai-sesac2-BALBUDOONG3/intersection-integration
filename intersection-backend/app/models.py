@@ -103,6 +103,7 @@ class ChatRoom(SQLModel, table=True):
     user1_id: int = Field(foreign_key="user.id")
     user2_id: int = Field(foreign_key="user.id")
     left_user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    is_pinned: bool = Field(default=False)  # ✅ 고정 여부
     created_at: datetime = Field(default_factory=get_kst_now)
     updated_at: datetime = Field(default_factory=get_kst_now)
 
@@ -115,6 +116,7 @@ class ChatMessage(SQLModel, table=True):
     content: str
     message_type: str = Field(default="normal")  # normal, system, file, image
     is_read: bool = Field(default=False)
+    is_pinned: bool = Field(default=False)  # ✅ 고정 여부
     
     # 파일 업로드 관련 필드
     file_url: Optional[str] = None
