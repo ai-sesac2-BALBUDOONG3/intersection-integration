@@ -563,6 +563,38 @@ def toggle_pin_message(
         return {"is_pinned": message.is_pinned}
 
 
+@router.delete("/rooms/{room_id}/messages/{message_id}")
+def delete_chat_message(
+    room_id: int,
+    message_id: int,
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """메시지 삭제 (본인이 보낸 메시지만 삭제 가능)"""
+    with Session(engine) as session:
+        # 채팅방 권한 확인
+        room = session.get(ChatRoom, room_id)
+        if not room:
+            raise HTTPException(status_code=404, detail="Chat room not found")
+        
+        if room.user1_id != current_user_id and room.user2_id != current_user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        
+        # 메시지 조회
+        message = session.get(ChatMessage, message_id)
+        if not message:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        # 본인이 보낸 메시지만 삭제 가능
+        if message.sender_id != current_user_id:
+            raise HTTPException(status_code=403, detail="본인이 보낸 메시지만 삭제할 수 있습니다")
+        
+        # 메시지 삭제
+        session.delete(message)
+        session.commit()
+        
+        return {"message": "메시지가 삭제되었습니다"}
+
+
 @router.delete("/rooms/{room_id}")
 def leave_chat_room(
     room_id: int,
