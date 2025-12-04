@@ -186,13 +186,26 @@ class IntersectionApp extends StatelessWidget {
               builder: (_) => const CommunityWriteScreen(),
             );
 
+          // 🔥 [수정 완료] ReportScreen 라우트: targetId와 targetType을 받도록 변경
           case '/report':
-            if (args is Post) {
+            if (args is Map<String, dynamic> && args['targetId'] is int && args['targetType'] is ReportTargetType) {
               return MaterialPageRoute(
-                builder: (_) => ReportScreen(post: args),
+                builder: (_) => ReportScreen(
+                  targetId: args['targetId'] as int,
+                  targetType: args['targetType'] as ReportTargetType,
+                ),
               );
             }
-            return _error("게시물 정보가 누락되었습니다.");
+            // 만약 Post 객체를 직접 인자로 받았다면 (기존 방식), Post ID와 Type으로 변환하여 전달
+            if (args is Post) {
+               return MaterialPageRoute(
+                builder: (_) => ReportScreen(
+                  targetId: args.id,
+                  targetType: ReportTargetType.post,
+                ),
+              );
+            }
+            return _error("신고에 필요한 정보가 누락되었습니다.");
 
           // =============================================
           // 🔥 댓글은 투명 Route + BottomSheet 조합

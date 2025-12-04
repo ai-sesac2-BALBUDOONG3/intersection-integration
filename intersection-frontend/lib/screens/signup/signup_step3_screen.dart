@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart'; // CupertinoPicker 사용을 위해 추가
 import 'package:intersection/data/signup_form_data.dart';
 
 class SignupStep3Screen extends StatefulWidget {
@@ -42,17 +43,72 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
     super.dispose();
   }
 
-  bool _isValidBirthYear(String year) {
-    if (year.isEmpty) return false;
-    final parsed = int.tryParse(year);
-    if (parsed == null) return false;
-    final now = DateTime.now().year;
-    return parsed >= 1900 && parsed <= now - 14; // 최소 만 14세
+  // 🎡 연도 선택 다이얼로그 (CupertinoPicker)
+  void _showYearPicker() {
+    final currentYear = DateTime.now().year;
+    // 1900년 ~ 현재-14년(만 14세)까지 리스트 생성
+    final years = List<String>.generate(
+      (currentYear - 14) - 1900 + 1,
+      (index) => (1900 + index).toString(),
+    ).reversed.toList(); // 최신 연도가 위로 오게
+
+    // 초기 선택값 인덱스 찾기
+    int initialIndex = 0;
+    if (birthYearController.text.isNotEmpty) {
+      initialIndex = years.indexOf(birthYearController.text);
+      if (initialIndex == -1) initialIndex = 0;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 250,
+          color: Colors.white,
+          child: Column(
+            children: [
+              // 상단 완료 버튼
+              Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.grey[100],
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Text(
+                    "완료",
+                    style: TextStyle(
+                      color: Colors.blue, 
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 16
+                    ),
+                  ),
+                ),
+              ),
+              // 휠 피커
+              Expanded(
+                child: CupertinoPicker(
+                  itemExtent: 32.0,
+                  scrollController: FixedExtentScrollController(
+                    initialItem: initialIndex,
+                  ),
+                  onSelectedItemChanged: (int index) {
+                    setState(() {
+                      birthYearController.text = years[index];
+                    });
+                  },
+                  children: years.map((year) => Center(child: Text(year))).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   bool _canProceed() {
     return nameController.text.isNotEmpty &&
-        _isValidBirthYear(birthYearController.text) &&
+        birthYearController.text.isNotEmpty &&
         selectedGender != null &&
         selectedRegion != null;
   }
@@ -119,7 +175,7 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    '이름, 생년도, 성별, 기본 지역을 입력해주세요',
+                    '이름, 출생년도, 성별, 기본 지역을 입력해주세요',
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                   const SizedBox(height: 32),
@@ -140,24 +196,24 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 생년
-                  const Text('생년도', style: TextStyle(fontWeight: FontWeight.w600)),
+                  // 🔥 [수정] 출생년도 (휠 피커 적용)
+                  const Text('출생년도', style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: birthYearController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      hintText: '1990',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  GestureDetector(
+                    onTap: _showYearPicker, // 탭하면 피커 열기
+                    child: AbsorbPointer( // 키보드 안 올라오게 막기
+                      child: TextField(
+                        controller: birthYearController,
+                        decoration: InputDecoration(
+                          hintText: '연도 선택',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          prefixIcon: const Icon(Icons.calendar_month_outlined),
+                          suffixIcon: const Icon(Icons.arrow_drop_down),
+                        ),
                       ),
-                      prefixIcon: const Icon(Icons.calendar_month_outlined),
-                      errorText: birthYearController.text.isNotEmpty &&
-                              !_isValidBirthYear(birthYearController.text)
-                          ? '1900~${DateTime.now().year - 14}년 사이의 연도를 입력해주세요'
-                          : null,
                     ),
-                    onChanged: (_) => setState(() {}),
                   ),
                   const SizedBox(height: 20),
 
@@ -219,8 +275,7 @@ class _SignupStep3ScreenState extends State<SignupStep3Screen> {
                           onPressed: _canProceed()
                               ? () {
                                   widget.data.name = nameController.text;
-                                  widget.data.birthYear =
-                                      birthYearController.text;
+                                  widget.data.birthYear = birthYearController.text;
                                   widget.data.gender = selectedGender!;
                                   widget.data.baseRegion = selectedRegion!;
 

@@ -472,7 +472,7 @@ class _SignupStep1ScreenState extends State<SignupStep1Screen> {
                       const SizedBox(height: 16),
                       _buildSection(
                         '제2조 수집하는 개인정보 항목',
-                        '• 필수 정보: 이름, 이메일, 비밀번호, 휴대전화번호, 성별, 생년월일\n• 부가 정보: 닉네임, 지역, 학교명, 학교 종류, 입학년도\n• 프로필 정보: 프로필 사진, 배경 사진, 피드 이미지\n• 서비스 이용 기록: IP 주소, 접속 로그, 기기 정보',
+                        '• 필수 정보: 이름, 이메일, 비밀번호, 휴대전화번호, 성별, 출생년도\n• 부가 정보: 닉네임, 지역, 학교명, 학교 종류, 입학년도\n• 프로필 정보: 프로필 사진, 배경 사진, 피드 이미지\n• 서비스 이용 기록: IP 주소, 접속 로그, 기기 정보',
                       ),
                       const SizedBox(height: 16),
                       _buildSection(
