@@ -50,8 +50,35 @@ class Comment {
       authorProfileImage: json['author_profile_image'],
       authorProfileBytes: json['author_profile_bytes'],
 
-      likesCount: json['likes_count'] ?? 0,
-      liked: json['liked'] ?? false,
+      likesCount: json['like_count'] ?? json['likes_count'] ?? 0,  // 백엔드 필드명 통일
+      liked: json['is_liked'] ?? json['liked'] ?? false,  // 백엔드 필드명 통일
+    );
+  }
+
+  // copyWith 메서드 추가 - 불변성을 위한 복사
+  Comment copyWith({
+    int? id,
+    int? postId,
+    int? userId,
+    String? content,
+    DateTime? createdAt,
+    String? authorName,
+    String? authorProfileImage,
+    Uint8List? authorProfileBytes,
+    int? likesCount,
+    bool? liked,
+  }) {
+    return Comment(
+      id: id ?? this.id,
+      postId: postId ?? this.postId,
+      userId: userId ?? this.userId,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+      authorName: authorName ?? this.authorName,
+      authorProfileImage: authorProfileImage ?? this.authorProfileImage,
+      authorProfileBytes: authorProfileBytes ?? this.authorProfileBytes,
+      likesCount: likesCount ?? this.likesCount,
+      liked: liked ?? this.liked,
     );
   }
 

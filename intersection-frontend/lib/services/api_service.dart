@@ -204,6 +204,7 @@ class ApiService {
       if (data["school_type"] != null) "school_type": data["school_type"],
       if (data["admission_year"] != null)
         "admission_year": data["admission_year"],
+      if (data["schools"] != null) "schools": data["schools"],  // 여러 학교 정보
       if (data["profile_image"] != null) "profile_image": data["profile_image"],
       if (data["background_image"] != null)
         "background_image": data["background_image"],
@@ -479,6 +480,26 @@ class ApiService {
   }
 
   // ... (createPost, listPosts 등 기존 함수 유지) ...
+
+  static Future<Map<String, dynamic>> updateComment(
+    int postId,
+    int commentId,
+    String content,
+  ) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/posts/$postId/comments/$commentId");
+    
+    final response = await http.put(
+      url,
+      headers: _headers(json: true),
+      body: jsonEncode({"content": content}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    
+    throw Exception("댓글 수정 실패: ${response.body}");
+  }
 
   static Future<bool> deleteComment(int postId, int commentId) async {
     // 백엔드 라우터가 posts/{post_id}/comments/{comment_id} 형식을 사용한다고 가정

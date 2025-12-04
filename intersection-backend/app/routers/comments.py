@@ -51,12 +51,11 @@ def create_comment(post_id: int, payload: CommentCreate, current_user: User = De
             post_id=comment.post_id, 
             user_id=comment.user_id, 
             content=comment.content, 
-            user_name=display_name, 
             author_name=display_name, 
             author_profile_image=current_user.profile_image, 
             created_at=comment.created_at.isoformat(),
-            likes_count=0,
-            liked=False
+            like_count=0,
+            is_liked=False
         )
 
 @router.get("/posts/{post_id}/comments", response_model=List[CommentRead])
@@ -102,12 +101,11 @@ def list_comments(
                 post_id=comment.post_id, 
                 user_id=comment.user_id, 
                 content=comment.content, 
-                user_name=display_name, 
                 author_name=display_name, 
                 author_profile_image=user.profile_image, 
                 created_at=comment.created_at.isoformat(),
-                likes_count=like_count, 
-                liked=is_liked      
+                like_count=like_count, 
+                is_liked=is_liked      
             ))
 
         return comments_list
@@ -150,12 +148,11 @@ def update_comment(
             post_id=comment.post_id,
             user_id=comment.user_id,
             content=comment.content,
-            user_name=display_name,
             author_name=display_name,
             author_profile_image=current_user.profile_image,
             created_at=comment.created_at.isoformat(),
-            likes_count=like_count,
-            liked=is_liked
+            like_count=like_count,
+            is_liked=is_liked
         )
 
 # 🔥 [수정된 부분] 댓글 삭제 로직 강화

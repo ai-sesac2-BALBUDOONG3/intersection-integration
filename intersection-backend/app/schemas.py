@@ -112,7 +112,7 @@ class CommentRead(BaseModel):
     created_at: Optional[str] = None
     
     # 👤 작성자 정보
-    user_name: Optional[str] = None
+    author_name: Optional[str] = None  # 프론트엔드와 일치
     author_profile_image: Optional[str] = None 
     
     # 👍 [추가] 좋아요 정보

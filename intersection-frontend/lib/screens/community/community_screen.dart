@@ -140,9 +140,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         }
 
                         return ThreadPost(
+                          key: ValueKey('post_${post.id}_${post.likesCount}_${post.commentsCount}'),
                           post: post, 
                           author: author,
                           onPostDeleted: _refreshPosts, // 🔥 삭제 시 목록 갱신 콜백
+                          onPostUpdated: () {
+                            if (mounted) setState(() {});
+                          },
                         );
                       },
                     ),
@@ -231,12 +235,14 @@ class ThreadPost extends StatefulWidget {
   final Post post;
   final User? author;
   final VoidCallback? onPostDeleted; // 🔥 삭제 콜백
+  final VoidCallback? onPostUpdated; // 🔥 업데이트 콜백
 
   const ThreadPost({
     super.key, 
     required this.post, 
     required this.author,
     this.onPostDeleted,
+    this.onPostUpdated,
   });
 
   @override
@@ -244,25 +250,6 @@ class ThreadPost extends StatefulWidget {
 }
 
 class _ThreadPostState extends State<ThreadPost> {
-  late bool liked;
-  late int likesCount;
-
-  @override
-  void initState() {
-    super.initState();
-    liked = widget.post.liked;
-    likesCount = widget.post.likesCount;
-  }
-
-  @override
-  void didUpdateWidget(ThreadPost oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.post.id != widget.post.id) {
-      liked = widget.post.liked;
-      likesCount = widget.post.likesCount;
-    }
-  }
-
   bool get isMyPost => widget.post.authorId == AppState.currentUser?.id;
 
   ImageProvider _profileProvider(User? u) {
@@ -750,12 +737,13 @@ class _ThreadPostState extends State<ThreadPost> {
       children: [
         GestureDetector(
           onTap: () async {
-            final wasLiked = liked;
+            final wasLiked = widget.post.liked;
+            final wasCount = widget.post.likesCount;
 
             // 1) UI 먼저 업데이트
             setState(() {
-              liked = !liked;
-              likesCount += liked ? 1 : -1;
+              widget.post.liked = !widget.post.liked;
+              widget.post.likesCount += widget.post.liked ? 1 : -1;
             });
 
             try {
@@ -764,14 +752,24 @@ class _ThreadPostState extends State<ThreadPost> {
 
               // 3) 서버 값으로 다시 동기화
               setState(() {
-                liked = res["liked"];
-                likesCount = res["likes_count"];
+                widget.post.liked = res["liked"];
+                widget.post.likesCount = res["likes_count"];
               });
+              
+              // 4) AppState 업데이트
+              final postIndex = AppState.communityPosts.indexWhere((p) => p.id == widget.post.id);
+              if (postIndex != -1) {
+                AppState.communityPosts[postIndex].liked = res["liked"];
+                AppState.communityPosts[postIndex].likesCount = res["likes_count"];
+              }
+              
+              // 5) 부모 위젯 갱신
+              widget.onPostUpdated?.call();
             } catch (e) {
               // 실패 시 원래 상태로 복구
               setState(() {
-                liked = wasLiked;
-                likesCount += wasLiked ? 1 : -1;
+                widget.post.liked = wasLiked;
+                widget.post.likesCount = wasCount;
               });
             }
           },
@@ -780,15 +778,15 @@ class _ThreadPostState extends State<ThreadPost> {
               Icon(
                 Icons.local_fire_department,
                 size: 22,
-                color: liked ? Colors.orange : Colors.grey.shade600,
+                color: widget.post.liked ? Colors.orange : Colors.grey.shade600,
               ),
               const SizedBox(width: 4),
               Text(
-                "$likesCount",
+                "${widget.post.likesCount}",
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: liked ? Colors.orange : Colors.grey.shade800,
+                  color: widget.post.liked ? Colors.orange : Colors.grey.shade800,
                 ),
               ),
             ],
@@ -798,8 +796,13 @@ class _ThreadPostState extends State<ThreadPost> {
         const SizedBox(width: 18),
 
         GestureDetector(
-          onTap: () {
-            Navigator.pushNamed(context, '/comments', arguments: widget.post);
+          onTap: () async {
+            await Navigator.pushNamed(context, '/comments', arguments: widget.post);
+            // 댓글 화면에서 돌아왔을 때 무조건 갱신
+            if (mounted) {
+              setState(() {});
+              widget.onPostUpdated?.call();
+            }
           },
           child: Row(
             children: [
@@ -807,7 +810,7 @@ class _ThreadPostState extends State<ThreadPost> {
                   size: 18, color: Colors.grey.shade700),
               const SizedBox(width: 4),
               Text(
-                '댓글 보기',
+                '${widget.post.commentsCount ?? 0}',
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.grey.shade700,

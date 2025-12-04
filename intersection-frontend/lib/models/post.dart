@@ -15,6 +15,9 @@ class Post {
   int likesCount;
   bool liked;
 
+  // 댓글 개수
+  int commentsCount;
+
   Post({
     required this.id,
     required this.authorId,
@@ -29,6 +32,7 @@ class Post {
 
     this.likesCount = 0,
     this.liked = false,
+    this.commentsCount = 0,
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
@@ -63,6 +67,7 @@ class Post {
       // 🔥 백엔드 키와 정확히 일치하도록 수정
       likesCount: json['like_count'] ?? 0,
       liked: json['is_liked'] ?? false,
+      commentsCount: json['comment_count'] ?? 0,
     );
   }
 

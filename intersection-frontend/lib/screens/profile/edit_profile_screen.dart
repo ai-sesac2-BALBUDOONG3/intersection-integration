@@ -184,7 +184,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       await UserStorage.save(updated);
 
       if (!mounted) return;
-      Navigator.pop(context);
+      Navigator.pop(context, true); // true를 반환하여 프로필 화면 갱신
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

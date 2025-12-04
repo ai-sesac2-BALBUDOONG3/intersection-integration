@@ -175,6 +175,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return const AssetImage("assets/images/logo.png");
   }
 
+  // ============================
+  // 학교 종류에 따른 아이콘 반환
+  // ============================
+  IconData _getSchoolIcon(String schoolType) {
+    switch (schoolType) {
+      case '초등학교':
+        return Icons.child_care_rounded;
+      case '중학교':
+        return Icons.school_rounded;
+      case '고등학교':
+        return Icons.menu_book_rounded;
+      case '대학교':
+      case '대학원':
+        return Icons.account_balance_rounded;
+      default:
+        return Icons.school_rounded;
+    }
+  }
+
+  // ============================
+  // 학교 종류 라벨 반환
+  // ============================
+  String _getSchoolTypeLabel(String schoolType) {
+    switch (schoolType) {
+      case '초등학교':
+        return '초등';
+      case '중학교':
+        return '중등';
+      case '고등학교':
+        return '고등';
+      case '대학교':
+        return '대학';
+      case '대학원':
+        return '대학원';
+      default:
+        return '학교';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AppState.currentUser!;
@@ -393,19 +432,332 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   const Divider(),
                   const SizedBox(height: 20),
-                  Text(
-                    "학교: ${user.school}",
-                    style: const TextStyle(fontSize: 16),
+                  
+                  // 학교 정보 - 세련된 카드 형태
+                  if (user.schools != null && user.schools!.isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.school_rounded, size: 20, color: Color(0xFF4A90E2)),
+                            SizedBox(width: 8),
+                            Text(
+                              "학력",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF2C3E50),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ...user.schools!.map((school) {
+                          final schoolName = school['name'] ?? school['school_name'] ?? '';
+                          final schoolType = school['school_type'] ?? '';
+                          final admissionYear = school['admission_year'];
+                          
+                          // 학교 타입에 따른 색상
+                          Color getSchoolColor() {
+                            switch (schoolType) {
+                              case '초등학교':
+                                return Colors.orange;
+                              case '중학교':
+                                return Colors.blue;
+                              case '고등학교':
+                                return Colors.purple;
+                              default:
+                                return const Color(0xFF4A90E2);
+                            }
+                          }
+                          
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.white,
+                                  getSchoolColor().withOpacity(0.05),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: getSchoolColor().withOpacity(0.3),
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: getSchoolColor().withOpacity(0.15),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: getSchoolColor().withOpacity(0.1),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(14),
+                                  topRight: Radius.circular(14),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: getSchoolColor().withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      _getSchoolIcon(schoolType),
+                                      size: 24,
+                                      color: getSchoolColor(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          schoolName,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                            color: getSchoolColor(),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "$schoolType${admissionYear != null ? ' · $admissionYear년 입학' : ''}",
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey.shade700,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: getSchoolColor(),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      _getSchoolTypeLabel(schoolType),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        const SizedBox(height: 10),
+                      ],
+                    )
+                  else if (user.school.isNotEmpty)
+                    // 하위 호환성: 기존 단일 학교 정보
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.school_rounded, size: 20, color: Color(0xFF4A90E2)),
+                            SizedBox(width: 8),
+                            Text(
+                              "학교",
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF2C3E50),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF4A90E2).withOpacity(0.08),
+                                const Color(0xFF4A90E2).withOpacity(0.03),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFF4A90E2).withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF4A90E2).withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  _getSchoolIcon(user.schoolType ?? ''),
+                                  size: 20,
+                                  color: const Color(0xFF4A90E2),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  user.school,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF2C3E50),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                    ),
+                  
+                  // 지역 정보 - 세련된 디자인
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_rounded, size: 20, color: Color(0xFFE74C3C)),
+                      const SizedBox(width: 8),
+                      const Text(
+                        "지역",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2C3E50),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "지역: ${user.region}",
-                    style: const TextStyle(fontSize: 16),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFFE74C3C).withOpacity(0.08),
+                          const Color(0xFFE74C3C).withOpacity(0.03),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFE74C3C).withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE74C3C).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.place_rounded,
+                            size: 20,
+                            color: Color(0xFFE74C3C),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          user.region,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF2C3E50),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "${user.birthYear}년생",
-                    style: const TextStyle(fontSize: 16),
+                  const SizedBox(height: 20),
+                  
+                  // 출생년도 - 세련된 디자인
+                  Row(
+                    children: [
+                      const Icon(Icons.cake_rounded, size: 20, color: Color(0xFF9B59B6)),
+                      const SizedBox(width: 8),
+                      const Text(
+                        "출생년도",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2C3E50),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF9B59B6).withOpacity(0.08),
+                          const Color(0xFF9B59B6).withOpacity(0.03),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF9B59B6).withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF9B59B6).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.calendar_today_rounded,
+                            size: 20,
+                            color: Color(0xFF9B59B6),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          "${user.birthYear}년생",
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF2C3E50),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 30),
 
@@ -444,13 +796,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: () {
-                        Navigator.push(
+                      onPressed: () async {
+                        final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => const EditProfileScreen(),
                           ),
                         );
+                        // 프로필 수정 후 돌아왔을 때 화면 갱신
+                        if (result == true && mounted) {
+                          setState(() {});
+                        }
                       },
                       style: ButtonStyle(
                         backgroundColor:
