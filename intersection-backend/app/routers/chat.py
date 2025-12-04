@@ -298,8 +298,16 @@ def get_my_chat_rooms(current_user_id: int = Depends(get_current_user_id)):
                 i_reported_them=i_reported_or_blocked,
                 they_blocked_me=they_blocked_or_reported,
                 # ✅ 채팅방 나가기 상태 추가
-                they_left=they_left
+                they_left=they_left,
+                # ✅ 고정 여부 추가
+                is_pinned=room.is_pinned
             ))
+        
+        # 고정된 채팅방을 먼저 정렬
+        result.sort(key=lambda x: (
+            not (x.is_pinned or False),  # 고정된 것이 먼저 (False가 먼저)
+            x.last_message_time or ""  # 시간 역순
+        ), reverse=True)
         
         return result
 
@@ -338,8 +346,8 @@ def get_chat_messages(
         
         session.commit()
         
-        # ✅ 파일 정보 포함하여 반환
-        return [
+        # ✅ 파일 정보 포함하여 반환 (고정된 메시지를 먼저 정렬)
+        messages_list = [
             ChatMessageRead(
                 id=msg.id,
                 room_id=msg.room_id,
@@ -352,10 +360,17 @@ def get_chat_messages(
                 file_url=msg.file_url,
                 file_name=msg.file_name,
                 file_size=msg.file_size,
-                file_type=msg.file_type
+                file_type=msg.file_type,
+                # ✅ 고정 여부 추가
+                is_pinned=msg.is_pinned
             )
             for msg in messages
         ]
+        
+        # 시간 순서대로만 정렬 (고정 여부와 관계없이 원래 위치 유지)
+        messages_list.sort(key=lambda x: x.created_at)
+        
+        return messages_list
 
 
 # ------------------------------------------------------
@@ -484,8 +499,68 @@ def send_chat_message(
             file_url=message.file_url,
             file_name=message.file_name,
             file_size=message.file_size,
-            file_type=message.file_type
+            file_type=message.file_type,
+            # ✅ 고정 여부 반환
+            is_pinned=message.is_pinned
         )
+
+
+@router.put("/rooms/{room_id}/pin")
+def toggle_pin_chat_room(
+    room_id: int,
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """
+    채팅방 고정/고정 해제
+    """
+    with Session(engine) as session:
+        room = session.get(ChatRoom, room_id)
+        if not room:
+            raise HTTPException(status_code=404, detail="Chat room not found")
+        
+        if room.user1_id != current_user_id and room.user2_id != current_user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        
+        room.is_pinned = not room.is_pinned
+        session.add(room)
+        session.commit()
+        session.refresh(room)
+        
+        return {"is_pinned": room.is_pinned}
+
+
+@router.put("/rooms/{room_id}/messages/{message_id}/pin")
+def toggle_pin_message(
+    room_id: int,
+    message_id: int,
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """
+    메시지 고정/고정 해제
+    """
+    with Session(engine) as session:
+        # 채팅방 권한 확인
+        room = session.get(ChatRoom, room_id)
+        if not room:
+            raise HTTPException(status_code=404, detail="Chat room not found")
+        
+        if room.user1_id != current_user_id and room.user2_id != current_user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        
+        # 메시지 조회
+        message = session.get(ChatMessage, message_id)
+        if not message:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        if message.room_id != room_id:
+            raise HTTPException(status_code=400, detail="Message does not belong to this room")
+        
+        message.is_pinned = not message.is_pinned
+        session.add(message)
+        session.commit()
+        session.refresh(message)
+        
+        return {"is_pinned": message.is_pinned}
 
 
 @router.delete("/rooms/{room_id}")

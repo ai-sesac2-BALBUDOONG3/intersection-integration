@@ -89,11 +89,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
         toolbarHeight: 64,
         titleSpacing: 16,
       ),
-      AppBar(
-        title: const Text("채팅"),
-        toolbarHeight: 64,
-        titleSpacing: 16,
-      ),
+      null, // 채팅 화면은 자체 AppBar 사용
       AppBar(
         title: const Text("내 정보"),
         toolbarHeight: 64,

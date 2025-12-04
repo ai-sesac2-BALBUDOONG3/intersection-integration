@@ -15,6 +15,9 @@ class ChatMessage {
   final int? fileSize;
   final String? fileType;
 
+  // ✅ 고정 여부
+  final bool isPinned;  // 메시지 고정 여부
+
   ChatMessage({
     required this.id,
     required this.roomId,
@@ -27,6 +30,7 @@ class ChatMessage {
     this.fileName,
     this.fileSize,
     this.fileType,
+    this.isPinned = false,  // ✅ 고정 여부
   });
 
   // ✅ 이미지 여부 확인 (더 강력한 감지)
@@ -99,6 +103,7 @@ class ChatMessage {
       fileName: json['file_name'] as String?,
       fileSize: json['file_size'] as int?,
       fileType: json['file_type'] as String?,
+      isPinned: json['is_pinned'] as bool? ?? false,  // ✅ 고정 여부
     );
   }
 
@@ -115,6 +120,7 @@ class ChatMessage {
       if (fileName != null) 'file_name': fileName,
       if (fileSize != null) 'file_size': fileSize,
       if (fileType != null) 'file_type': fileType,
+      'is_pinned': isPinned,  // ✅ 고정 여부
     };
   }
 }

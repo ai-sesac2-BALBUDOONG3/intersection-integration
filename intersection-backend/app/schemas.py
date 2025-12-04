@@ -156,6 +156,8 @@ class ChatRoomRead(BaseModel):
     they_blocked_me: bool = False  # 상대방이 나를 신고/차단함
     # ✅ 채팅방 나가기 상태 추가
     they_left: bool = False  # 상대방이 채팅방을 나감
+    # ✅ 고정 여부 추가
+    is_pinned: bool = False  # 채팅방 고정 여부
 
 class ChatMessageCreate(BaseModel):
     """메시지 전송 요청"""
@@ -180,6 +182,8 @@ class ChatMessageRead(BaseModel):
     file_name: Optional[str] = None
     file_size: Optional[int] = None
     file_type: Optional[str] = None
+    # ✅ 고정 여부 추가
+    is_pinned: bool = False  # 메시지 고정 여부
 
 # ------------------------------------------------------
 # 🚫 차단 & 사용자 신고 스키마

@@ -159,11 +159,11 @@ class ApiService {
       return list
           .map(
             (data) => User(
-              id: data["id"],
-              name: data["name"],
-              birthYear: data["birth_year"],
-              region: data["region"],
-              school: data["school_name"],
+          id: data["id"],
+          name: data["name"],
+          birthYear: data["birth_year"],
+          region: data["region"],
+          school: data["school_name"],
               profileImageUrl: data["profile_image"],
               backgroundImageUrl: data["background_image"],
             ),
@@ -617,6 +617,36 @@ class ApiService {
     );
 
     return response.statusCode == 200;
+  }
+
+  // ✅ 채팅방 고정/고정 해제
+  static Future<bool> togglePinChatRoom(int roomId) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/chat/rooms/$roomId/pin");
+
+    final response = await http.put(
+      url,
+      headers: _headers(json: false),
+    );
+
+    if (response.statusCode == 200) {
+      return true;
+    }
+    return false;
+  }
+
+  // ✅ 메시지 고정/고정 해제
+  static Future<bool> togglePinMessage(int roomId, int messageId) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/chat/rooms/$roomId/messages/$messageId/pin");
+
+    final response = await http.put(
+      url,
+      headers: _headers(json: false),
+    );
+
+    if (response.statusCode == 200) {
+      return true;
+    }
+    return false;
   }
 
   static Future<Map<String, dynamic>> checkMyReport(int userId) async {

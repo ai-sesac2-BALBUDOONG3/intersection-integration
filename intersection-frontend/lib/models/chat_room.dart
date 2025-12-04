@@ -24,6 +24,9 @@ class ChatRoom {
   // ✅ 채팅방 나가기 상태
   final bool theyLeft;  // 상대방이 채팅방을 나감
 
+  // ✅ 고정 여부
+  final bool isPinned;  // 채팅방 고정 여부
+
   ChatRoom({
     required this.id,
     required this.user1Id,
@@ -41,6 +44,7 @@ class ChatRoom {
     this.iReportedThem = false,
     this.theyBlockedMe = false,
     this.theyLeft = false,  // ✅ 추가
+    this.isPinned = false,  // ✅ 고정 여부
   });
 
   // ✅ 마지막 메시지가 이미지인지 확인
@@ -86,6 +90,7 @@ class ChatRoom {
       iReportedThem: json['i_reported_them'] ?? false,
       theyBlockedMe: json['they_blocked_me'] ?? false,
       theyLeft: json['they_left'] ?? false,  // ✅ 추가
+      isPinned: json['is_pinned'] ?? false,  // ✅ 고정 여부
     );
   }
 
@@ -107,6 +112,7 @@ class ChatRoom {
       'i_reported_them': iReportedThem,
       'they_blocked_me': theyBlockedMe,
       'they_left': theyLeft,  // ✅ 추가
+      'is_pinned': isPinned,  // ✅ 고정 여부
     };
   }
 }
