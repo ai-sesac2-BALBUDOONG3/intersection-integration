@@ -1271,7 +1271,7 @@ class _ChatScreenState extends State<ChatScreen> {
         onLeaveChat: _showLeaveChatDialog,
       ),
       body: Column(
-        children: [
+          children: [
           // 상태 배너
           StatusBanner(
             iReportedThem: _iReportedThem || widget.iReportedThem,
@@ -1296,7 +1296,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   _currentPinnedIndex = (_currentPinnedIndex + 1) % _pinnedMessages.length;
                 });
               },
-            ),
+                  ),
 
           Expanded(
             child: _isLoading
@@ -1305,20 +1305,20 @@ class _ChatScreenState extends State<ChatScreen> {
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
+                children: [
+                  Icon(
                               Icons.search_off,
                               size: 64,
                               color: Colors.grey.shade300,
-                            ),
+                  ),
                             const SizedBox(height: 16),
                             Text(
                               "검색 결과가 없어요",
-                              style: TextStyle(
+                      style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.grey.shade600,
-                              ),
+                      ),
                             ),
                             const SizedBox(height: 8),
                             Text(
@@ -1326,10 +1326,10 @@ class _ChatScreenState extends State<ChatScreen> {
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey.shade500,
-                              ),
-                            ),
-                          ],
-                        ),
+                    ),
+                  ),
+                ],
+              ),
                       )
                 : _messages.isEmpty
                     ? Center(
@@ -1379,17 +1379,17 @@ class _ChatScreenState extends State<ChatScreen> {
                 isUploading: _isUploading,
                 isSending: _isSending,
                 onToggleEmojiPicker: () {
-                  setState(() {
-                    _showEmojiPicker = !_showEmojiPicker;
-                  });
-                  if (_showEmojiPicker) {
-                    FocusScope.of(context).unfocus();
-                  }
-                },
+                      setState(() {
+                        _showEmojiPicker = !_showEmojiPicker;
+                      });
+                      if (_showEmojiPicker) {
+                        FocusScope.of(context).unfocus();
+                      }
+                    },
                 onShowAttachmentOptions: _showAttachmentOptions,
                 onSendMessage: _sendMessage,
                 onEmojiSelected: (emoji) {
-                  setState(() {
+                        setState(() {
                     _messageController.text += emoji;
                   });
                 },
@@ -1822,13 +1822,13 @@ class _ChatScreenState extends State<ChatScreen> {
       _reportId,
       () {
         // 즉시 로컬 상태 업데이트하여 UI 활성화
-        setState(() {
+          setState(() {
           _iReportedThem = false;
           _reportId = null;
-        });
+          });
         // 서버 상태 확인 (비동기로 실행되지만 이미 UI는 활성화됨)
         _checkReportStatus();
       },
-    );
+        );
   }
 }

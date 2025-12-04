@@ -56,25 +56,46 @@ class ApiService {
     }
   }
 
-// ----------------------------------------------------
+  // ----------------------------------------------------
   // 🏫 학교 검색 (자동완성용)
   // ----------------------------------------------------
   static Future<List<String>> searchSchools(String keyword) async {
-    if (keyword.isEmpty) return [];
+    if (keyword.isEmpty || keyword.trim().isEmpty) return [];
 
+    // 한글 URL 인코딩 처리
+    final encodedKeyword = Uri.encodeComponent(keyword.trim());
     final url = Uri.parse(
-        "${ApiConfig.baseUrl}/common/search/schools?keyword=$keyword");
+        "${ApiConfig.baseUrl}/common/search/schools?keyword=$encodedKeyword");
 
-    final response = await http.get(
-      url,
-      headers: _headers(json: false),
-    );
+    debugPrint('🔍 학교 검색 API 호출: $url');
 
-    if (response.statusCode == 200) {
-      final List<dynamic> list = jsonDecode(utf8.decode(response.bodyBytes));
-      return list.map((e) => e.toString()).toList();
-    } else {
-      // 에러 시 빈 리스트 반환 (조용히 처리)
+    try {
+      final response = await http.get(
+        url,
+        headers: _headers(json: false),
+      ).timeout(const Duration(seconds: 10));
+      
+      debugPrint('📡 학교 검색 응답: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final body = utf8.decode(response.bodyBytes);
+        debugPrint('📦 학교 검색 응답 본문: $body');
+        
+        try {
+          final List<dynamic> list = jsonDecode(body);
+          final results = list.map((e) => e.toString()).toList();
+          debugPrint('✅ 학교 검색 파싱 완료: ${results.length}개');
+          return results;
+        } catch (e) {
+          debugPrint('❌ JSON 파싱 오류: $e, 본문: $body');
+          return [];
+        }
+      } else {
+        debugPrint('❌ 학교 검색 실패: HTTP ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      debugPrint('❌ 학교 검색 오류: $e');
       return [];
     }
   }

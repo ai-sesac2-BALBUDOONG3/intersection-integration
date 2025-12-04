@@ -125,26 +125,26 @@ class _FriendProfileScreenState extends State<FriendProfileScreen> {
               
               // 둘 다 안 한 경우: 차단하기, 신고하기 버튼
               return [
-                const PopupMenuItem(
-                  value: 'block',
-                  child: Row(
-                    children: [
-                      Icon(Icons.block, size: 20, color: Colors.red),
-                      SizedBox(width: 12),
-                      Text('차단하기'),
-                    ],
-                  ),
+              const PopupMenuItem(
+                value: 'block',
+                child: Row(
+                  children: [
+                    Icon(Icons.block, size: 20, color: Colors.red),
+                    SizedBox(width: 12),
+                    Text('차단하기'),
+                  ],
                 ),
-                const PopupMenuItem(
-                  value: 'report',
-                  child: Row(
-                    children: [
-                      Icon(Icons.report, size: 20, color: Colors.orange),
-                      SizedBox(width: 12),
-                      Text('신고하기'),
-                    ],
-                  ),
+              ),
+              const PopupMenuItem(
+                value: 'report',
+                child: Row(
+                  children: [
+                    Icon(Icons.report, size: 20, color: Colors.orange),
+                    SizedBox(width: 12),
+                    Text('신고하기'),
+                  ],
                 ),
+              ),
               ];
             },
           ),

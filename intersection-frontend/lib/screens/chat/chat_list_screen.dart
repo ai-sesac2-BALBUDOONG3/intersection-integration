@@ -166,33 +166,33 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _chatRooms.isEmpty && !_isSearchMode
               ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.chat_bubble_outline,
-                        size: 80,
-                        color: Colors.grey.shade300,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        "아직 채팅이 없어요",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "친구와 대화를 시작해보세요!",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                    ],
-                  ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline,
+              size: 80,
+              color: Colors.grey.shade300,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "아직 채팅이 없어요",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "친구와 대화를 시작해보세요!",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
                 )
               : _isSearchMode && _searchController.text.trim().isNotEmpty && _filteredRooms.isEmpty
                   ? Center(
@@ -225,19 +225,19 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       ),
                     )
               : RefreshIndicator(
-                  onRefresh: _loadChatRooms,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+      onRefresh: _loadChatRooms,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: _filteredRooms.length,
-                    separatorBuilder: (context, index) => Divider(
-                      height: 1,
-                      indent: 80,
-                      color: Colors.grey.shade200,
-                    ),
-                    itemBuilder: (context, index) {
+        separatorBuilder: (context, index) => Divider(
+          height: 1,
+          indent: 80,
+          color: Colors.grey.shade200,
+        ),
+        itemBuilder: (context, index) {
                       final room = _filteredRooms[index];
-                      return _buildChatRoomTile(room);
-                    },
+          return _buildChatRoomTile(room);
+        },
                   ),
                 ),
       floatingActionButton: FloatingActionButton(

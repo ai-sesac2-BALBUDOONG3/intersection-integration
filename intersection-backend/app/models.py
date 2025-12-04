@@ -1,6 +1,7 @@
-from typing import Optional, List
-from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional, List, Dict, Any
+from sqlmodel import SQLModel, Field, Relationship, Column, JSON
 from datetime import datetime, timezone, timedelta
+from sqlalchemy.dialects.postgresql import JSONB
 
 # 한국 시간대 (KST = UTC+9)
 KST = timezone(timedelta(hours=9))
@@ -42,9 +43,11 @@ class User(SQLModel, table=True):
     birth_year: Optional[int] = None
     gender: Optional[str] = None
     region: Optional[str] = None
-    school_name: Optional[str] = None
-    school_type: Optional[str] = None
-    admission_year: Optional[int] = None
+    school_name: Optional[str] = None  # 하위 호환성을 위해 유지
+    school_type: Optional[str] = None  # 하위 호환성을 위해 유지
+    admission_year: Optional[int] = None  # 하위 호환성을 위해 유지
+    # 여러 학교 정보를 JSON 형식으로 저장
+    schools: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))
 
     # 프로필 이미지 & 배경 이미지 URL
     profile_image: Optional[str] = None      

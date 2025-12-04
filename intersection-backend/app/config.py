@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     # ✅ CORS (프로덕션용)
     ALLOWED_ORIGINS: str | None = None
 
+    # NEIS OpenAPI 인증키
+    # https://open.neis.go.kr 에서 발급받은 인증키를 .env 파일에 설정
+    NEIS_API_KEY: str | None = None
+
     class Config:
         env_file = ".env"
         # ✅ Pydantic v2에서 정의되지 않은 필드 무시

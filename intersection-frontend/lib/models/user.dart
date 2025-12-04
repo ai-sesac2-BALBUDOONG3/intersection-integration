@@ -8,9 +8,10 @@ class User {
   final int birthYear;
   final String? gender;
   final String region;
-  final String school;
-  final String? schoolType;
-  final int? admissionYear;
+  final String school;  // 하위 호환성
+  final String? schoolType;  // 하위 호환성
+  final int? admissionYear;  // 하위 호환성
+  final List<Map<String, dynamic>>? schools;  // 여러 학교 정보 (JSON 형식)
   final String? phone;  // 전화번호
 
   // 기존 URL 방식
@@ -31,9 +32,10 @@ class User {
     required this.birthYear,
     this.gender,
     required this.region,
-    required this.school,
-    this.schoolType,
-    this.admissionYear,
+    required this.school,  // 하위 호환성
+    this.schoolType,  // 하위 호환성
+    this.admissionYear,  // 하위 호환성
+    this.schools,  // 여러 학교 정보 (JSON 형식)
     this.phone,
     this.profileImageUrl,
     this.backgroundImageUrl,
@@ -50,9 +52,12 @@ class User {
       birthYear: json["birth_year"] ?? json["birthYear"] ?? 0,
       gender: json["gender"],
       region: json["region"] ?? "",
-      school: json["school_name"] ?? json["school"] ?? "",
-      schoolType: json["school_type"],
-      admissionYear: json["admission_year"],
+      school: json["school_name"] ?? json["school"] ?? "",  // 하위 호환성
+      schoolType: json["school_type"],  // 하위 호환성
+      admissionYear: json["admission_year"],  // 하위 호환성
+      schools: json["schools"] != null 
+          ? List<Map<String, dynamic>>.from(json["schools"])
+          : null,  // 여러 학교 정보 (JSON 형식)
       phone: json["phone"],
       profileImageUrl: json["profile_image"],
       backgroundImageUrl: json["background_image"],
@@ -70,9 +75,10 @@ class User {
       "birth_year": birthYear,
       if (gender != null) "gender": gender,
       "region": region,
-      "school_name": school,
-      if (schoolType != null) "school_type": schoolType,
-      if (admissionYear != null) "admission_year": admissionYear,
+      "school_name": school,  // 하위 호환성
+      if (schoolType != null) "school_type": schoolType,  // 하위 호환성
+      if (admissionYear != null) "admission_year": admissionYear,  // 하위 호환성
+      if (schools != null) "schools": schools,  // 여러 학교 정보 (JSON 형식)
       "profile_image": profileImageUrl,
       "background_image": backgroundImageUrl,
 

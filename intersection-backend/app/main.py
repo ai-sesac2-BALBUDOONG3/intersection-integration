@@ -52,6 +52,16 @@ def on_startup():
     # DB 테이블 생성
     create_db_and_tables()
 
+@app.on_event("shutdown")
+async def on_shutdown():
+    """서버 종료 시 httpx 클라이언트 정리"""
+    from .routers.common import _http_client
+    if _http_client is not None:
+        try:
+            await _http_client.aclose()
+        except Exception:
+            pass
+
 
 # 라우터 등록
 app.include_router(auth_router.router)

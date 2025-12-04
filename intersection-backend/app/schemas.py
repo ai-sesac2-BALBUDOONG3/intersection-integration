@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 
 # ------------------------------------------------------
@@ -22,9 +22,10 @@ class UserCreate(BaseModel):
     birth_year: Optional[int] = None
     gender: Optional[str] = None
     region: Optional[str] = None
-    school_name: Optional[str] = None
-    school_type: Optional[str] = None
-    admission_year: Optional[int] = None
+    school_name: Optional[str] = None  # 하위 호환성
+    school_type: Optional[str] = None  # 하위 호환성
+    admission_year: Optional[int] = None  # 하위 호환성
+    schools: Optional[List[Dict[str, Any]]] = None  # 여러 학교 정보 (JSON 형식)
     profile_image: Optional[str] = None
     background_image: Optional[str] = None    
 
@@ -33,7 +34,8 @@ class UserRead(BaseModel):
     name: Optional[str] = None
     birth_year: Optional[int] = None
     region: Optional[str] = None
-    school_name: Optional[str] = None
+    school_name: Optional[str] = None  # 하위 호환성
+    schools: Optional[List[Dict[str, Any]]] = None  # 여러 학교 정보 (JSON 형식)
     phone: Optional[str] = None  # 전화번호
 
     # 👇 [추가] 프로필/배경 이미지 URL 필드
@@ -49,9 +51,10 @@ class UserUpdate(BaseModel):
     birth_year: Optional[int] = None
     gender: Optional[str] = None
     region: Optional[str] = None
-    school_name: Optional[str] = None
-    school_type: Optional[str] = None
-    admission_year: Optional[int] = None
+    school_name: Optional[str] = None  # 하위 호환성
+    school_type: Optional[str] = None  # 하위 호환성
+    admission_year: Optional[int] = None  # 하위 호환성
+    schools: Optional[List[Dict[str, Any]]] = None  # 여러 학교 정보 (JSON 형식)
     profile_image: Optional[str] = None
     background_image: Optional[str] = None
 

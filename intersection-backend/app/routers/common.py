@@ -1,19 +1,61 @@
-from typing import List  # ✅ [수정] List 임포트 추가
+from typing import List, Tuple, Optional
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from sqlmodel import Session, select  # ✅ [수정] DB 관련 임포트 추가
 import shutil
 import os
 import uuid
 from pathlib import Path
+import httpx
+from time import time
+from collections import OrderedDict
 
-# ✅ JWT 인증 및 DB 엔진, 모델 임포트
+# ✅ JWT 인증 임포트
 from ..auth import decode_access_token
-from ..db import engine           # ✅ [수정] engine 임포트 (DB 연결용)
-from ..models import Community    # ✅ [수정] Community 모델 임포트
+from ..config import settings
 
 router = APIRouter(tags=["common"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
+
+# ✅ 학교 검색 결과 캐시 (메모리 기반, 최대 100개, 1시간 TTL)
+_school_search_cache: OrderedDict[str, Tuple[List[str], float]] = OrderedDict()
+_cache_max_size = 100
+_cache_ttl = 3600  # 1시간
+
+# ✅ httpx 클라이언트 전역 재사용 (연결 풀 최적화)
+_http_client: Optional[httpx.AsyncClient] = None
+
+def get_http_client() -> httpx.AsyncClient:
+    """전역 httpx 클라이언트 가져오기 (연결 풀 재사용)"""
+    global _http_client
+    if _http_client is None:
+        _http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(2.0, connect=1.0),  # 연결 1초, 전체 2초
+            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
+        )
+    return _http_client
+
+def _get_cached_result(keyword: str) -> Optional[List[str]]:
+    """캐시에서 결과 가져오기"""
+    keyword_lower = keyword.lower().strip()
+    if keyword_lower in _school_search_cache:
+        results, timestamp = _school_search_cache[keyword_lower]
+        # TTL 확인
+        if time() - timestamp < _cache_ttl:
+            # 최근 사용된 항목을 맨 뒤로 이동 (LRU)
+            _school_search_cache.move_to_end(keyword_lower)
+            return results
+        else:
+            # 만료된 항목 제거
+            del _school_search_cache[keyword_lower]
+    return None
+
+def _set_cached_result(keyword: str, results: List[str]):
+    """캐시에 결과 저장"""
+    keyword_lower = keyword.lower().strip()
+    # 캐시 크기 제한 (LRU)
+    if len(_school_search_cache) >= _cache_max_size:
+        _school_search_cache.popitem(last=False)  # 가장 오래된 항목 제거
+    _school_search_cache[keyword_lower] = (results, time())
 
 UPLOAD_DIR = "uploads"
 
@@ -88,22 +130,94 @@ async def upload_file(
     }
 
 
-# 🏫 학교 이름 자동완성 검색 API (에러 났던 부분 수정됨)
+# 🏫 학교 이름 자동완성 검색 API (NEIS OpenAPI 사용 + 캐싱)
 @router.get("/common/search/schools", response_model=List[str])
-def search_schools(keyword: str):
+async def search_schools(keyword: str):
     """
     학교 이름 자동완성 검색 API
+    NEIS OpenAPI를 사용하여 전국 초중고등학교를 실시간으로 검색합니다.
+    메모리 캐싱으로 응답 속도 최적화 (1시간 TTL).
     """
-    if not keyword:
+    start_time = time()
+    
+    if not keyword or not keyword.strip():
         return []
 
-    # ✅ [수정] engine을 직접 사용하여 세션 생성 (안전한 방식)
-    with Session(engine) as session:
-        statement = (
-            select(Community.school_name)
-            .where(Community.school_name.contains(keyword))
-            .distinct()
-            .limit(10)
-        )
-        results = session.exec(statement).all()
-        return results
+    keyword = keyword.strip()
+    
+    # ✅ 캐시 확인 (즉시 반환)
+    cached_result = _get_cached_result(keyword)
+    if cached_result is not None:
+        elapsed = (time() - start_time) * 1000
+        print(f"[캐시 히트] 키워드: '{keyword}', 응답시간: {elapsed:.0f}ms")
+        return cached_result
+    
+    if not settings.NEIS_API_KEY:
+        return []
+
+    try:
+        base_url = "https://open.neis.go.kr/hub/schoolInfo"
+        params = {
+            "KEY": settings.NEIS_API_KEY,
+            "Type": "json",
+            "pIndex": 1,
+            "pSize": 10,  # ✅ 최적화: 20 -> 10 (필요한 만큼만, 더 빠른 응답)
+            "SCHUL_NM": keyword,
+        }
+        
+        # ✅ 전역 클라이언트 재사용 (연결 풀 최적화, 타임아웃 2초)
+        client = get_http_client()
+        response = await client.get(base_url, params=params)
+            
+        if response.status_code == 200:
+            data = response.json()
+            school_info = data.get("schoolInfo", [])
+            
+            results = []
+            
+            # NEIS API 응답 구조: schoolInfo는 배열
+            # [{'head': [...]}, {'row': [실제 데이터...]}]
+            if school_info and len(school_info) > 0:
+                # 배열의 모든 요소를 순회하며 'row' 키를 가진 요소 찾기
+                for item in school_info:
+                    if isinstance(item, dict) and "row" in item:
+                        rows = item.get("row", [])
+                        
+                        # 각 학교 데이터 처리 (최적화된 루프)
+                        for row in rows:
+                            if not isinstance(row, dict):
+                                continue
+                                
+                            school_name = row.get("SCHUL_NM", "")
+                            
+                            # 빠른 필터링: 대학교 제외
+                            if not school_name or "대학교" in school_name:
+                                continue
+                            
+                            # 초중고등학교만 포함 (간단한 체크)
+                            if school_name.endswith(("초등학교", "중학교", "고등학교")):
+                                if school_name not in results:
+                                    results.append(school_name)
+                                    if len(results) >= 10:
+                                        break
+                        
+                        if len(results) >= 10:
+                            break
+            
+            # ✅ 캐시에 저장
+            _set_cached_result(keyword, results[:10])
+            
+            elapsed = (time() - start_time) * 1000
+            print(f"[학교 검색 완료] 키워드: '{keyword}', 결과: {len(results)}개, 응답시간: {elapsed:.0f}ms")
+            return results[:10]
+        
+        return []
+
+    except httpx.TimeoutException:
+        elapsed = (time() - start_time) * 1000
+        print(f"[학교 검색 타임아웃] 키워드: '{keyword}', 응답시간: {elapsed:.0f}ms")
+        return []
+    except Exception as e:
+        elapsed = (time() - start_time) * 1000
+        print(f"[학교 검색 오류] 키워드: '{keyword}', 오류: {str(e)}, 응답시간: {elapsed:.0f}ms")
+        return []

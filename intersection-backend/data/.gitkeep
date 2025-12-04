@@ -1,0 +1,5 @@
+# 이 디렉토리는 schools.json 파일을 저장하는 곳입니다.
+# 공공데이터포털에서 다운로드한 학교 기본정보 데이터를 
+# scripts/download_schools_data.py 스크립트로 변환하여
+# 이 디렉토리에 schools.json 파일을 생성하세요.
+
