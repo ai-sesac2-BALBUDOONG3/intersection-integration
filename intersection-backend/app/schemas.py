@@ -33,9 +33,13 @@ class UserCreate(BaseModel):
 class UserRead(BaseModel):
     id: int
     name: Optional[str] = None
+    nickname: Optional[str] = None
     birth_year: Optional[int] = None
+    gender: Optional[str] = None
     region: Optional[str] = None
     school_name: Optional[str] = None  # 하위 호환성
+    school_type: Optional[str] = None  # 하위 호환성
+    admission_year: Optional[int] = None  # 하위 호환성
     schools: Optional[List[Dict[str, Any]]] = None  # 여러 학교 정보 (JSON 형식)
     phone: Optional[str] = None  # 전화번호
 

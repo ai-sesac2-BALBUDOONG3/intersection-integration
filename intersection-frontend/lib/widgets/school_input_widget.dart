@@ -107,7 +107,7 @@ class _SchoolInputWidgetState extends State<SchoolInputWidget> {
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
             value: school.schoolType,
-            hint: const Text('초/중/고/대'),
+            hint: const Text('초/중/고'),
             items: schoolLevels
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
@@ -181,25 +181,39 @@ class _SchoolInputWidgetState extends State<SchoolInputWidget> {
                   }
                 });
               }
-              
-              // 텍스트 변경 감지
-              controller.addListener(() {
-                final newSchools = List<SchoolInfo>.from(widget.schools);
-                newSchools[index] = school.copyWith(name: controller.text);
-                widget.onSchoolsChanged(newSchools);
-              });
 
               return TextField(
                 controller: controller,
                 focusNode: focusNode,
-                onEditingComplete: onEditingComplete,
+                readOnly: school.name.isNotEmpty,
                 decoration: InputDecoration(
-                  hintText: '예: OO초등학교',
+                  hintText: '학교명을 검색하세요 (최소 2글자)',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  prefixIcon: const Icon(Icons.location_city_outlined, size: 20),
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: school.name.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 20),
+                          onPressed: () {
+                            final newSchools = List<SchoolInfo>.from(widget.schools);
+                            newSchools[index] = school.copyWith(name: '');
+                            widget.onSchoolsChanged(newSchools);
+                            controller.clear();
+                          },
+                        )
+                      : null,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  filled: true,
+                  fillColor: school.name.isNotEmpty ? Colors.grey.shade100 : Colors.white,
+                  helperText: school.name.isEmpty
+                      ? '목록에서 학교를 선택해주세요'
+                      : '선택됨: ${school.name}',
+                  helperStyle: TextStyle(
+                    fontSize: 11, 
+                    color: school.name.isEmpty ? Colors.blue.shade700 : Colors.green.shade700,
+                    fontWeight: school.name.isEmpty ? FontWeight.normal : FontWeight.w600,
+                  ),
                 ),
               );
             },

@@ -26,43 +26,75 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // 성별 선택
   String? genderValue; // 'male' | 'female' | 'other' | null
 
+  // 지역 선택
+  String? selectedRegion;
+  final List<String> regions = [
+    '서울', '부산', '대구', '인천', '광주', '대전', '울산',
+    '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주',
+  ];
+
   // 여러 학교 정보
   List<SchoolInfo> schools = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    final user = AppState.currentUser!;
+    _loadUserData();
+  }
 
-    nameController = TextEditingController(text: user.name);
-    nicknameController = TextEditingController(text: user.nickname ?? "");
-    regionController = TextEditingController(text: user.region);
+  Future<void> _loadUserData() async {
+    try {
+      // 서버에서 최신 사용자 정보 가져오기
+      final user = await ApiService.getMyInfo();
+      
+      // AppState 업데이트
+      AppState.currentUser = user;
+      await UserStorage.save(user);
 
-    birthYearController = TextEditingController(text: user.birthYear.toString());
+      if (!mounted) return;
 
-    genderValue = user.gender; // 서버 값 사용
+      setState(() {
+        nameController = TextEditingController(text: user.name);
+        nicknameController = TextEditingController(text: user.nickname ?? "");
+        regionController = TextEditingController(text: user.region);
+        selectedRegion = user.region.isNotEmpty ? user.region : null;
 
-    // 여러 학교 정보가 있으면 사용, 없으면 기존 단일 학교 정보 사용
-    if (user.schools != null && user.schools!.isNotEmpty) {
-      schools = user.schools!.map((schoolJson) {
-        return SchoolInfo(
-          name: schoolJson['name'] ?? '',
-          schoolType: schoolJson['school_type'],
-          admissionYear: schoolJson['admission_year'],
-        );
-      }).toList();
-    } else if (user.school.isNotEmpty) {
-      // 하위 호환성: 기존 단일 학교 정보를 사용
-      schools = [
-        SchoolInfo(
-          name: user.school,
-          schoolType: user.schoolType,
-          admissionYear: user.admissionYear,
-        ),
-      ];
-    } else {
-      // 기본으로 하나의 빈 학교 정보 추가
-      schools = [SchoolInfo(name: '')];
+        birthYearController = TextEditingController(text: user.birthYear.toString());
+
+        genderValue = user.gender; // 서버 값 사용
+
+        // 여러 학교 정보가 있으면 사용, 없으면 기존 단일 학교 정보 사용
+        if (user.schools != null && user.schools!.isNotEmpty) {
+          schools = user.schools!.map((schoolJson) {
+            return SchoolInfo(
+              name: schoolJson['name'] ?? '',
+              schoolType: schoolJson['school_type'],
+              admissionYear: schoolJson['admission_year'],
+            );
+          }).toList();
+        } else if (user.school.isNotEmpty) {
+          // 하위 호환성: 기존 단일 학교 정보를 사용
+          schools = [
+            SchoolInfo(
+              name: user.school,
+              schoolType: user.schoolType,
+              admissionYear: user.admissionYear,
+            ),
+          ];
+        } else {
+          // 기본으로 하나의 빈 학교 정보 추가
+          schools = [SchoolInfo(name: '')];
+        }
+
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('사용자 정보를 불러오는 데 실패했습니다: $e')),
+      );
+      Navigator.pop(context);
     }
   }
 
@@ -101,8 +133,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (birthYearController.text.trim().isNotEmpty)
         "birth_year": int.tryParse(birthYearController.text.trim()),
       if (genderValue != null && genderValue!.isNotEmpty) "gender": genderValue,
-      if (regionController.text.trim().isNotEmpty)
-        "region": regionController.text.trim(),
+      if (selectedRegion != null && selectedRegion!.isNotEmpty)
+        "region": selectedRegion,
       if (firstSchool != null) "school_name": firstSchool.name,  // 하위 호환성
       if (firstSchool != null && firstSchool.schoolType != null)
         "school_type": firstSchool.schoolType,  // 하위 호환성
@@ -128,9 +160,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         gender: (genderValue == null || genderValue!.isEmpty)
           ? user.gender
           : genderValue,
-        region: regionController.text.trim().isEmpty
-            ? user.region
-            : regionController.text.trim(),
+        region: (selectedRegion != null && selectedRegion!.isNotEmpty)
+            ? selectedRegion!
+            : user.region,
         school: (firstSchool != null && firstSchool.name.isNotEmpty)
             ? firstSchool.name
             : user.school,  // 하위 호환성
@@ -163,6 +195,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        appBar: AppBar(
+          title: const Text(
+            "프로필 수정",
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.white,
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -180,7 +227,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _buildSection(
             title: "기본 정보",
             children: [
-              _buildField("이름", nameController),
+              _buildReadOnlyField(
+                label: "이름",
+                value: nameController.text,
+                helper: "이름은 변경할 수 없어요",
+              ),
               const SizedBox(height: 16),
               _buildReadOnlyField(
                 label: "성별",
@@ -188,7 +239,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 helper: "성별은 변경할 수 없어요",
               ),
               const SizedBox(height: 16),
-              _buildField("출생년도", birthYearController, number: true),
+              _buildReadOnlyField(
+                label: "출생년도",
+                value: birthYearController.text,
+                helper: "출생년도는 변경할 수 없어요",
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -196,7 +251,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _buildSection(
             title: "학교 정보",
             children: [
-              _buildField("지역", regionController),
+              const Text('기본 지역', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: selectedRegion,
+                hint: const Text('지역을 선택해주세요'),
+                items: regions
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: (v) => setState(() => selectedRegion = v),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  prefixIcon: const Icon(Icons.location_on_outlined),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+              ),
               const SizedBox(height: 20),
               // 여러 학교 입력 위젯
               SchoolInputWidget(

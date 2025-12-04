@@ -94,13 +94,19 @@ def create_user(data: UserCreate):
 
         return UserRead(
             id=user.id, 
-            name=user.name, 
-            birth_year=user.birth_year, 
+            name=user.name,
+            nickname=user.nickname,
+            birth_year=user.birth_year,
+            gender=user.gender,
             region=user.region, 
             school_name=user.school_name,  # 하위 호환성
-            schools=user.schools,  # 여러 학교 정보 (JSON)
+            school_type=user.school_type,  # 하위 호환성
+            admission_year=user.admission_year,  # 하위 호환성
+            schools=user.schools if isinstance(user.schools, list) else (list(user.schools.values()) if user.schools else None),  # 여러 학교 정보 (JSON)
+            phone=user.phone,
             profile_image=user.profile_image,
-            background_image=user.background_image
+            background_image=user.background_image,
+            feed_images=[]
         )
 
 
@@ -121,10 +127,13 @@ def get_my_info(current_user: User = Depends(get_current_user)):
             id=current_user.id, 
             name=current_user.name, 
             nickname=current_user.nickname,
-            birth_year=current_user.birth_year, 
+            birth_year=current_user.birth_year,
+            gender=current_user.gender,
             region=current_user.region, 
             school_name=current_user.school_name,  # 하위 호환성
-            schools=current_user.schools,  # 여러 학교 정보 (JSON)
+            school_type=current_user.school_type,  # 하위 호환성
+            admission_year=current_user.admission_year,  # 하위 호환성
+            schools=current_user.schools if isinstance(current_user.schools, list) else (list(current_user.schools.values()) if current_user.schools else None),  # 여러 학교 정보 (JSON)
             phone=current_user.phone,
             profile_image=current_user.profile_image,
             background_image=current_user.background_image,
@@ -159,9 +168,13 @@ def get_user_by_id_api(
             id=user.id, 
             name=user.name, 
             nickname=user.nickname,
-            birth_year=user.birth_year, 
+            birth_year=user.birth_year,
+            gender=user.gender,
             region=user.region, 
-            school_name=user.school_name,
+            school_name=user.school_name,  # 하위 호환성
+            school_type=user.school_type,  # 하위 호환성
+            admission_year=user.admission_year,  # 하위 호환성
+            schools=user.schools if isinstance(user.schools, list) else (list(user.schools.values()) if user.schools else None),  # 여러 학교 정보 (JSON)
             phone=user.phone,
             profile_image=user.profile_image,
             background_image=user.background_image,
@@ -248,11 +261,16 @@ def update_my_info(data: UserUpdate, token: str = Depends(oauth2_scheme)):
 
         return UserRead(
             id=user.id, 
-            name=user.name, 
-            birth_year=user.birth_year, 
+            name=user.name,
+            nickname=user.nickname,
+            birth_year=user.birth_year,
+            gender=user.gender,
             region=user.region, 
             school_name=user.school_name,  # 하위 호환성
-            schools=user.schools,  # 여러 학교 정보 (JSON)
+            school_type=user.school_type,  # 하위 호환성
+            admission_year=user.admission_year,  # 하위 호환성
+            schools=user.schools if isinstance(user.schools, list) else (list(user.schools.values()) if user.schools else None),  # 여러 학교 정보 (JSON)
+            phone=user.phone,
             profile_image=user.profile_image,
             background_image=user.background_image,
             feed_images=feed_images_list 

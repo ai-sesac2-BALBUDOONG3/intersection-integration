@@ -123,7 +123,7 @@ async def upload_file(
     # 3. 반환
     return {
         "success": True,
-        "file_url": f"/uploads/{filename}",
+        "file_url": f"/static/{filename}",
         "filename": file.filename,
         "size": file_size,
         "type": file.content_type
@@ -140,7 +140,10 @@ async def search_schools(keyword: str):
     """
     start_time = time()
     
+    print(f"[학교 검색 API 호출] 키워드: '{keyword}'")
+    
     if not keyword or not keyword.strip():
+        print(f"[학교 검색] 빈 키워드 -> 빈 배열 반환")
         return []
 
     keyword = keyword.strip()
@@ -153,6 +156,7 @@ async def search_schools(keyword: str):
         return cached_result
     
     if not settings.NEIS_API_KEY:
+        print(f"[학교 검색 오류] NEIS_API_KEY가 설정되지 않음")
         return []
 
     try:

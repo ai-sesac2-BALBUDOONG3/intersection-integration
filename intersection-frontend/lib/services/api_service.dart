@@ -140,6 +140,9 @@ class ApiService {
         school: data["school_name"] ?? "",
         schoolType: data["school_type"],
         admissionYear: data["admission_year"],
+        schools: data["schools"] != null 
+            ? List<Map<String, dynamic>>.from(data["schools"])
+            : null,
         phone: data["phone"],
         profileImageUrl: data["profile_image"],
         backgroundImageUrl: data["background_image"],

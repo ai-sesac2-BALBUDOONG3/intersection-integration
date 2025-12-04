@@ -122,9 +122,10 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
       'birth_year': birthYear,
       'gender': form.gender.isNotEmpty ? form.gender : null,
       'region': form.baseRegion,
-      'school_name': schoolNameController.text,
-      'school_type': selectedSchoolLevel,
-      'admission_year': admissionYear,
+      'school_name': firstSchool.name,
+      'school_type': firstSchool.schoolType,
+      'admission_year': firstSchool.admissionYear,
+      'schools': schoolsJson,  // 여러 학교 정보 (JSON)
     };
 
     try {
@@ -254,102 +255,14 @@ class _SignupStep4ScreenState extends State<SignupStep4Screen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 학교명 (자동완성)
-                  const Text('학교명',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Autocomplete<String>(
-                        optionsBuilder: (TextEditingValue textEditingValue) async {
-                          if (textEditingValue.text == '') {
-                            return const Iterable<String>.empty();
-                          }
-                          return await ApiService.searchSchools(textEditingValue.text);
-                        },
-                        onSelected: (String selection) {
-                          schoolNameController.text = selection;
-                          setState(() {}); 
-                        },
-                        fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
-                          if (schoolNameController.text.isNotEmpty && 
-                              controller.text.isEmpty) {
-                            controller.text = schoolNameController.text;
-                          }
-                          controller.addListener(() {
-                            schoolNameController.text = controller.text;
-                            setState(() {}); 
-                          });
-
-                          return TextField(
-                            controller: controller,
-                            focusNode: focusNode,
-                            onEditingComplete: onEditingComplete,
-                            decoration: InputDecoration(
-                              hintText: '예: OO초등학교',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              prefixIcon: const Icon(Icons.location_city_outlined),
-                              filled: true,
-                              fillColor: Colors.grey.shade50,
-                            ),
-                          );
-                        },
-                        optionsViewBuilder: (context, onSelected, options) {
-                          return Align(
-                            alignment: Alignment.topLeft,
-                            child: Material(
-                              elevation: 4.0,
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                width: constraints.maxWidth,
-                                color: Colors.white,
-                                constraints: const BoxConstraints(maxHeight: 200),
-                                child: ListView.builder(
-                                  padding: EdgeInsets.zero,
-                                  shrinkWrap: true,
-                                  itemCount: options.length,
-                                  itemBuilder: (BuildContext context, int index) {
-                                    final String option = options.elementAt(index);
-                                    return InkWell(
-                                      onTap: () => onSelected(option),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(16.0),
-                                        child: Text(option),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      );
+                  // 여러 학교 입력 위젯
+                  SchoolInputWidget(
+                    schools: schools,
+                    onSchoolsChanged: (newSchools) {
+                      setState(() {
+                        schools = newSchools;
+                      });
                     },
-                  ),
-                  
-                  const SizedBox(height: 20),
-
-                  // 🔥 [수정] 입학년도 (휠 피커 적용)
-                  const Text('입학년도',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: _showEntryYearPicker, // 탭하면 휠 피커 열기
-                    child: AbsorbPointer(
-                      child: TextField(
-                        controller: entryYearController,
-                        decoration: InputDecoration(
-                          hintText: '연도 선택',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          prefixIcon: const Icon(Icons.calendar_month_outlined),
-                          suffixIcon: const Icon(Icons.arrow_drop_down),
-                        ),
-                      ),
-                    ),
                   ),
 
                   const SizedBox(height: 32),
