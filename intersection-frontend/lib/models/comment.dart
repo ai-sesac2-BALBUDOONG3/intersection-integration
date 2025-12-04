@@ -54,4 +54,6 @@ class Comment {
       liked: json['liked'] ?? false,
     );
   }
+
+  get userName => null;
 }

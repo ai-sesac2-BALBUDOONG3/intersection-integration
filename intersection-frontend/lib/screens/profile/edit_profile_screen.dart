@@ -199,6 +199,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: const Text("저장"),
             ),
           ),
+
+          const SizedBox(height: 40),
+// 🗑️ 회원탈퇴 버튼 추가
+          Center(
+            child: TextButton(
+              onPressed: () => _showWithdrawConfirmDialog(context),
+              child: Text(
+                "회원탈퇴",
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 14,
+                  decoration: TextDecoration.underline, // 밑줄 추가
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -473,6 +490,137 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         child: const Text(
                           "로그아웃",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+// 🗑️ 회원탈퇴 확인 다이얼로그
+  void _showWithdrawConfirmDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.warning_rounded, // 경고 아이콘
+                    size: 40,
+                    color: Colors.red.shade600,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  '회원탈퇴',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '정말 탈퇴하시겠습니까?\n작성한 게시글, 친구 관계 등\n모든 데이터가 삭제되며 복구할 수 없습니다.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          "취소",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () async {
+                          // 다이얼로그 닫기
+                          Navigator.of(dialogContext).pop();
+                          
+                          try {
+                            // 1. 서버에 탈퇴 요청
+                            final success = await ApiService.withdrawAccount();
+                            
+                            if (success) {
+                              // 2. 앱 내 데이터 초기화 (로그아웃과 동일)
+                              await AppState.logout();
+                              
+                              if (!context.mounted) return;
+                              
+                              // 3. 로그인 화면(랜딩 페이지)으로 이동
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (_) => const LandingScreen()),
+                                (route) => false,
+                              );
+                              
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('회원탈퇴가 완료되었습니다.')),
+                              );
+                            } else {
+                              throw Exception("서버 응답 오류");
+                            }
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('회원탈퇴 실패: $e')),
+                            );
+                          }
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red.shade600, // 더 진한 빨강
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          "탈퇴하기",
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,

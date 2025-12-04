@@ -622,7 +622,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
+void _showDeleteAccountDialog(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -694,19 +694,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton(
+                        // 🔥 수정된 부분 시작
                         onPressed: () async {
-                          Navigator.of(dialogContext).pop();
-                          // TODO: 회원탈퇴 API 호출
-                          await AppState.logout();
-                          if (!context.mounted) return;
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const LandingScreen(),
-                            ),
-                            (route) => false,
-                          );
+                          Navigator.of(dialogContext).pop(); // 팝업 닫기
+
+                          try {
+                            // 1. 서버에 탈퇴 요청 (여기가 빠져 있었습니다)
+                            final success = await ApiService.withdrawAccount();
+
+                            if (success) {
+                              // 2. 성공 시 로컬 로그아웃 처리
+                              await AppState.logout();
+                              
+                              if (!context.mounted) return;
+
+                              // 3. 로그인 화면으로 이동
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const LandingScreen(),
+                                ),
+                                (route) => false,
+                              );
+                              
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('회원탈퇴가 완료되었습니다.')),
+                              );
+                            } else {
+                               throw Exception("서버 응답 오류");
+                            }
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('탈퇴 실패: $e')),
+                            );
+                          }
                         },
+                        // 🔥 수정된 부분 끝
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.red.shade400,
                           padding: const EdgeInsets.symmetric(vertical: 14),

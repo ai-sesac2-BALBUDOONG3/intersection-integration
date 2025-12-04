@@ -8,6 +8,7 @@ import 'package:intersection/models/user.dart';
 import 'package:intersection/screens/profile/profile_screen.dart';
 import 'package:intersection/screens/friends/friend_profile_screen.dart';
 import 'package:intersection/config/api_config.dart';
+import 'package:intersection/screens/common/report_screen.dart'; // 신고 화면
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -23,6 +24,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
   void initState() {
     super.initState();
     _refreshPosts();
+  }
+
+  void _refreshPosts() {
+    ApiService.listPosts().then((rows) {
+      final posts = rows.map((r) => Post.fromJson(r)).toList();
+      AppState.communityPosts = posts;
+      if (mounted) setState(() {});
+    }).catchError((e) {
+      debugPrint('게시글 불러오기 실패: $e');
+    });
   }
 
   @override
@@ -128,7 +139,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           author = null;
                         }
 
-                        return ThreadPost(post: post, author: author);
+                        return ThreadPost(
+                          post: post, 
+                          author: author,
+                          onPostDeleted: _refreshPosts, // 🔥 삭제 시 목록 갱신 콜백
+                        );
                       },
                     ),
             ),
@@ -193,16 +208,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
       ),
     );
   }
-
-  void _refreshPosts() {
-    ApiService.listPosts().then((rows) {
-      final posts = rows.map((r) => Post.fromJson(r)).toList();
-      AppState.communityPosts = posts;
-      if (mounted) setState(() {});
-    }).catchError((e) {
-      print('게시글 불러오기 실패: $e');
-    });
-  }
 }
 
 // ==========================================================
@@ -220,13 +225,19 @@ ImageProvider resolveImage(String? url, Uint8List? bytes) {
 }
 
 // ==========================================================
-// 🔥 ThreadPost — 프로필/본문/이미지 안정화 버전
+// 🔥 ThreadPost — 프로필/본문/이미지/삭제기능 통합
 // ==========================================================
 class ThreadPost extends StatefulWidget {
   final Post post;
   final User? author;
+  final VoidCallback? onPostDeleted; // 🔥 삭제 콜백
 
-  const ThreadPost({super.key, required this.post, required this.author});
+  const ThreadPost({
+    super.key, 
+    required this.post, 
+    required this.author,
+    this.onPostDeleted,
+  });
 
   @override
   State<ThreadPost> createState() => _ThreadPostState();
@@ -252,7 +263,7 @@ class _ThreadPostState extends State<ThreadPost> {
     }
   }
 
-  bool get isMyPost => widget.author?.id == AppState.currentUser?.id;
+  bool get isMyPost => widget.post.authorId == AppState.currentUser?.id;
 
   ImageProvider _profileProvider(User? u) {
     if (u == null) return const AssetImage("assets/images/logo.png");
@@ -271,6 +282,28 @@ class _ThreadPostState extends State<ThreadPost> {
       backgroundImageUrl: null,
       profileFeedImages: [],
     );
+  }
+
+  // 🔥 게시글 삭제 함수
+  Future<void> _deletePost() async {
+    try {
+      final success = await ApiService.deletePost(widget.post.id);
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("게시글이 삭제되었습니다.")),
+          );
+          // 목록 갱신 요청
+          widget.onPostDeleted?.call();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("삭제 실패: $e")),
+        );
+      }
+    }
   }
 
   @override
@@ -448,6 +481,7 @@ class _ThreadPostState extends State<ThreadPost> {
               
               Divider(height: 1, color: Colors.grey.shade200),
               
+              // 타인의 글: 신고하기
               if (!isMyPost)
                 InkWell(
                   onTap: () {
@@ -505,11 +539,32 @@ class _ThreadPostState extends State<ThreadPost> {
                   ),
                 ),
               
+              // 내 글: 삭제하기
               if (isMyPost)
                 InkWell(
                   onTap: () {
-                    Navigator.pop(context);
-                    // TODO: 삭제 확인 다이얼로그 표시
+                    Navigator.pop(context); // BottomSheet 닫기
+                    // 삭제 확인 다이얼로그
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text("게시글 삭제"),
+                        content: const Text("정말 삭제하시겠습니까?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text("취소"),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(ctx); // 팝업 닫기
+                              _deletePost(); // 실제 삭제 요청
+                            },
+                            child: const Text("삭제", style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -637,11 +692,7 @@ class _ThreadPostState extends State<ThreadPost> {
                   onTap: () async {
                     Navigator.pop(context);
 
-                    final ok = await ApiService.reportUser(
-                      userId: widget.post.authorId,
-                      reason: item["title"] as String,
-                      content: widget.post.content,
-                    );
+                    final ok = await ApiService.reportPost(widget.post.id); // 🔥 게시글 신고 API
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(

@@ -56,6 +56,29 @@ class ApiService {
     }
   }
 
+// ----------------------------------------------------
+  // 🏫 학교 검색 (자동완성용)
+  // ----------------------------------------------------
+  static Future<List<String>> searchSchools(String keyword) async {
+    if (keyword.isEmpty) return [];
+
+    final url = Uri.parse(
+        "${ApiConfig.baseUrl}/common/search/schools?keyword=$keyword");
+
+    final response = await http.get(
+      url,
+      headers: _headers(json: false),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> list = jsonDecode(utf8.decode(response.bodyBytes));
+      return list.map((e) => e.toString()).toList();
+    } else {
+      // 에러 시 빈 리스트 반환 (조용히 처리)
+      return [];
+    }
+  }
+
   // ----------------------------------------------------
   // 로그인
   // ----------------------------------------------------
@@ -304,6 +327,7 @@ class ApiService {
 
     throw Exception("댓글 목록 불러오기 실패: ${response.body}");
   }
+  
 
   // ----------------------------------------------------
   // 게시물 신고
@@ -373,6 +397,52 @@ class ApiService {
     final url = Uri.parse("${ApiConfig.baseUrl}/comments/$commentId/like");
     final response = await http.delete(url, headers: _headers(json: false));
     return response.statusCode == 200;
+  }
+  // 🔥 [추가] 게시글 삭제
+  static Future<bool> deletePost(int postId) async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/posts/$postId");
+    final response = await http.delete(
+      url,
+      headers: _headers(json: false),
+    );
+    // 204 No Content면 성공
+    return response.statusCode == 200 || response.statusCode == 204;
+  }
+
+  // ... (createPost, listPosts 등 기존 함수 유지) ...
+
+  static Future<bool> deleteComment(int postId, int commentId) async {
+    // 백엔드 라우터가 posts/{post_id}/comments/{comment_id} 형식을 사용한다고 가정
+    final url =
+        Uri.parse("${ApiConfig.baseUrl}/posts/$postId/comments/$commentId");
+    
+    final response = await http.delete(
+      url,
+      headers: _headers(json: false),
+    );
+
+    // 200 OK 또는 204 No Content면 성공
+    return response.statusCode == 200 || response.statusCode == 204;
+  }
+
+  // ----------------------------------------------------
+  // ❤️ 댓글 좋아요 토글 (ON/OFF 통합)
+  // ----------------------------------------------------
+  static Future<Map<String, dynamic>> toggleCommentLike(int commentId) async {
+    // 백엔드 라우터가 comments/{comment_id}/like 형식을 사용한다고 가정
+    final url = Uri.parse("${ApiConfig.baseUrl}/comments/$commentId/like");
+    
+    final response = await http.post(
+      url,
+      headers: _headers(json: false),
+    );
+
+    if (response.statusCode == 200) {
+      // 백엔드는 { "is_liked": true/false, "like_count": 5 } 를 반환해야 합니다.
+      return jsonDecode(response.body); 
+    }
+    
+    throw Exception("댓글 좋아요 토글 실패: ${response.body}");
   }
 
   // ----------------------------------------------------
@@ -764,5 +834,19 @@ class ApiService {
       await updateMyInfo(updateData);
       AppState.currentUser = await getMyInfo();
     }
+  }
+// ----------------------------------------------------
+  // 🗑️ 회원탈퇴 (계정 삭제)
+  // ----------------------------------------------------
+  static Future<bool> withdrawAccount() async {
+    final url = Uri.parse("${ApiConfig.baseUrl}/users/me");
+
+    final response = await http.delete(
+      url,
+      headers: _headers(json: false),
+    );
+
+    // 204 No Content 또는 200 OK면 성공
+    return response.statusCode == 200 || response.statusCode == 204;
   }
 }
